@@ -28,19 +28,3 @@ func TestFindSrtmFileName(t *testing.T) {
 	// This file don't exists but the get_file_name is expected to return the supposed file:
 	checkSrtmFileName(t, 0, 0, "N00E000.hgt")
 }
-
-func TestGetSrtmLinks(t *testing.T) {
-	urls := []string{
-		SRTM_BASE_URL + SRTM1_URL,
-		SRTM_BASE_URL + SRTM3_URL,
-	}
-	for _, url := range urls {
-		urls, err := getLinksFromUrl(url, 0)
-		if err != nil {
-			fmt.Errorf("Can't get SRTM links from %s", SRTM_BASE_URL)
-		}
-		if urls == nil || len(urls) == 0 {
-			t.Error("No urls found")
-		}
-	}
-}
