@@ -5,6 +5,6 @@ install: test
 goimports:
 	goimports -w .
 gofmt:
-	gofmt -w .
+	gofmt -w ./geoelevations
 reload-srtm-data:
 	go run reloadjson.go

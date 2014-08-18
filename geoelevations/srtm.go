@@ -1,12 +1,15 @@
 package geoelevations
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -24,6 +27,19 @@ func NewSrtm() *Srtm {
 }
 
 func (self *Srtm) GetElevation(latitude, longitude float64) float64 {
+	srtmFileName := self.getSrtmFileName(latitude, longitude)
+
+	srtmData := GetSrtmData()
+
+	if _, err := os.Stat(srtmFileName); os.IsNotExist(err) {
+		srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
+		_ = srtmFileUrl
+		if srtmFileUrl == nil {
+			return math.NaN()
+		}
+		return 0
+	}
+
 	return 0
 }
 
@@ -44,11 +60,45 @@ func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
 	return fmt.Sprintf("%s%02d%s%03d.hgt", string(northSouth), latPart, string(eastWest), lonPart)
 }
 
+// Struct with contents and some utility methods of a single SRTM file
+type SrtmFile struct {
+	contents        []byte
+	fileName        string
+	isValidSrtmFile bool
+}
+
+func newSrtmFile() *SrtmFile {
+	// TODO; check if file exists if not retrieve and stored it
+    // TODO
+    return nil
+}
+
+func (self *SrtmFile) getElevation(latitude, longitude float64) float64 {
+	return 0.0
+}
+
 // ----------------------------------------------------------------------------------------------------
 // Misc util functions
 // ----------------------------------------------------------------------------------------------------
 
-func GetSrtmData() (*SrtmData, error) {
+func GetSrtmData() *SrtmData {
+	f, err := os.Open("urls.json")
+	if err != nil {
+		panic("Can't find srtm urls")
+	}
+
+	bytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		panic("Can't find srtm urls")
+	}
+
+	srtmData := new(SrtmData)
+	json.Unmarshal(bytes, srtmData)
+
+	return srtmData
+}
+
+func LoadSrtmData() (*SrtmData, error) {
 	result := new(SrtmData)
 
 	var err error

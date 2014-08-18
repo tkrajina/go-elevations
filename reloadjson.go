@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	srtmData, err := geoelevations.GetSrtmData()
+	srtmData, err := geoelevations.LoadSrtmData()
 
 	if err != nil {
 		log.Panic("Error reloading json:", err.Error())
