@@ -1,12 +1,12 @@
 package geoelevations
 
 import (
-	"encoding/xml"
 	"encoding/json"
+	"encoding/xml"
 	"fmt"
 	"io"
+	"log"
 	"math"
-    "log"
 	"net/http"
 	"strings"
 )
@@ -42,27 +42,27 @@ func getSrtmFileName(latitude, longitude float64) string {
 }
 
 func GetSrtmFilesUrls() ([]byte, error) {
-    result := new(SrtmData)
+	result := new(SrtmData)
 
-    var err error
-    result.Srtm1, err = getLinksFromUrl(SRTM_BASE_URL + SRTM1_URL, 0)
-    if err != nil {
-        return nil, err
-    }
-    result.Srtm3, err = getLinksFromUrl(SRTM_BASE_URL + SRTM3_URL, 0)
-    if err != nil {
-        return nil, err
-    }
+	var err error
+	result.Srtm1, err = getLinksFromUrl(SRTM_BASE_URL+SRTM1_URL, 0)
+	if err != nil {
+		return nil, err
+	}
+	result.Srtm3, err = getLinksFromUrl(SRTM_BASE_URL+SRTM3_URL, 0)
+	if err != nil {
+		return nil, err
+	}
 
-    jsonBytes, err := json.MarshalIndent(result, "", "\t")
+	jsonBytes, err := json.MarshalIndent(result, "", "\t")
 
-    return jsonBytes, err
+	return jsonBytes, err
 }
 
 func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {
 
 	if depth >= 2 {
-		return []SrtmUrl {}, nil
+		return []SrtmUrl{}, nil
 	}
 
 	resp, err := http.Get(url)
@@ -76,16 +76,16 @@ func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {
 	for _, tmpUrl := range urls {
 		urlLowercase := strings.ToLower(tmpUrl)
 		if strings.HasSuffix(urlLowercase, ".hgt.zip") {
-            parts := strings.Split(tmpUrl, "/")
-            srtmUrl := SrtmUrl{File: parts[len(parts) - 1], Url: fmt.Sprintf("%s/%s", url, tmpUrl)}
-            result = append(result, srtmUrl)
+			parts := strings.Split(tmpUrl, "/")
+			srtmUrl := SrtmUrl{File: parts[len(parts)-1], Url: fmt.Sprintf("%s/%s", url, tmpUrl)}
+			result = append(result, srtmUrl)
 			log.Printf("> %s/%s -> %s\n", url, tmpUrl, tmpUrl)
 		} else if len(urlLowercase) > 0 && urlLowercase[0] != '/' && !strings.HasPrefix(urlLowercase, "http") && !strings.HasSuffix(urlLowercase, ".jpg") {
 			newLinks, err := getLinksFromUrl(fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
-            if err != nil {
-                return nil, err
-            }
-            result = append(result, newLinks...)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, newLinks...)
 			log.Printf("> %s\n", tmpUrl)
 		}
 	}
