@@ -6,7 +6,8 @@ import (
 )
 
 func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileName string) {
-	fileName := getSrtmFileName(latitude, longitude)
+	srtm := NewSrtm()
+	fileName := srtm.getSrtmFileName(latitude, longitude)
 	if fileName != expectedFileName {
 		t.Error(fmt.Sprintf("SRTM FILE for (%v, %v) should be %s but is %s", latitude, longitude, expectedFileName, fileName))
 	}

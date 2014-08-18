@@ -19,15 +19,15 @@ const (
 type Srtm struct {
 }
 
+func NewSrtm() *Srtm {
+	return new(Srtm)
+}
+
 func (self *Srtm) GetElevation(latitude, longitude float64) float64 {
 	return 0
 }
 
-// ----------------------------------------------------------------------------------------------------
-// Misc util functions
-// ----------------------------------------------------------------------------------------------------
-
-func getSrtmFileName(latitude, longitude float64) string {
+func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
 	northSouth := 'S'
 	if latitude >= 0 {
 		northSouth = 'N'
@@ -43,6 +43,10 @@ func getSrtmFileName(latitude, longitude float64) string {
 
 	return fmt.Sprintf("%s%02d%s%03d.hgt", string(northSouth), latPart, string(eastWest), lonPart)
 }
+
+// ----------------------------------------------------------------------------------------------------
+// Misc util functions
+// ----------------------------------------------------------------------------------------------------
 
 func GetSrtmData() (*SrtmData, error) {
 	result := new(SrtmData)
