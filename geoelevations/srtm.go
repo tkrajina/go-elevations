@@ -1,7 +1,6 @@
 package geoelevations
 
 import (
-	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
@@ -24,6 +23,10 @@ func (self *Srtm) GetElevation(latitude, longitude float64) float64 {
 	return 0
 }
 
+// ----------------------------------------------------------------------------------------------------
+// Misc util functions
+// ----------------------------------------------------------------------------------------------------
+
 func getSrtmFileName(latitude, longitude float64) string {
 	northSouth := 'S'
 	if latitude >= 0 {
@@ -41,7 +44,7 @@ func getSrtmFileName(latitude, longitude float64) string {
 	return fmt.Sprintf("%s%02d%s%03d.hgt", string(northSouth), latPart, string(eastWest), lonPart)
 }
 
-func GetSrtmFilesUrls() ([]byte, error) {
+func GetSrtmData() (*SrtmData, error) {
 	result := new(SrtmData)
 
 	var err error
@@ -49,14 +52,13 @@ func GetSrtmFilesUrls() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	result.Srtm3, err = getLinksFromUrl(SRTM_BASE_URL+SRTM3_URL, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	jsonBytes, err := json.MarshalIndent(result, "", "\t")
-
-	return jsonBytes, err
+	return result, nil
 }
 
 func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {

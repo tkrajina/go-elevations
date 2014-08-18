@@ -1,15 +1,24 @@
 package main
 
 import (
-	"github.com/tkrajina/geoelevations/geoelevations"
+	"encoding/json"
 	"log"
 	"os"
+
+	"github.com/tkrajina/geoelevations/geoelevations"
 )
 
 func main() {
-	json, err := geoelevations.GetSrtmFilesUrls()
+	srtmData, err := geoelevations.GetSrtmData()
+
 	if err != nil {
 		log.Panic("Error reloading json:", err.Error())
+		return
+	}
+
+	srtmDataJson, err := json.MarshalIndent(srtmData, "", "\t")
+	if err != nil {
+		log.Panic("Error marshalling srtmData:", err.Error())
 		return
 	}
 
@@ -20,7 +29,7 @@ func main() {
 		return
 	}
 
-	f.Write(json)
+	f.Write(srtmDataJson)
 
-	log.Print("Written ", len(json), " bytes to ", fileName)
+	log.Print("Written ", len(srtmDataJson), " bytes to ", fileName)
 }
