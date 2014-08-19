@@ -1,6 +1,9 @@
 package geoelevations
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 type SrtmUrl struct {
 	File string
@@ -23,7 +26,7 @@ func (self *SrtmData) GetBestSrtmUrl(fileName string) *SrtmUrl {
 
 func (self *SrtmData) GetSrtm1Url(fileName string) *SrtmUrl {
 	for _, srtmUrl := range self.Srtm1 {
-		if strings.HasPrefix(fileName, srtmUrl.File) {
+		if strings.HasPrefix(srtmUrl.File, fileName) {
 			return &srtmUrl
 		}
 	}
@@ -32,7 +35,7 @@ func (self *SrtmData) GetSrtm1Url(fileName string) *SrtmUrl {
 
 func (self *SrtmData) GetSrtm3Url(fileName string) *SrtmUrl {
 	for _, srtmUrl := range self.Srtm3 {
-		if strings.HasPrefix(fileName, srtmUrl.File) {
+		if strings.HasPrefix(srtmUrl.File, fileName) {
 			return &srtmUrl
 		}
 	}

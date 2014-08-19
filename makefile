@@ -1,5 +1,5 @@
 test:
-	go test ./geoelevations
+	go test -v ./geoelevations
 install: test
 	go install ./geoelevations
 goimports:

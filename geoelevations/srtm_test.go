@@ -2,6 +2,7 @@ package geoelevations
 
 import (
 	"fmt"
+	"math"
 	"testing"
 )
 
@@ -27,4 +28,12 @@ func TestFindSrtmFileName(t *testing.T) {
 
 	// This file don't exists but the get_file_name is expected to return the supposed file:
 	checkSrtmFileName(t, 0, 0, "N00E000.hgt")
+}
+
+func TestGetElevation(t *testing.T) {
+	srtm := NewSrtm()
+	elevation := srtm.GetElevation(45.0, 13.0)
+	if math.IsNaN(elevation) {
+		t.Errorf("Invalid elevation:%v", elevation)
+	}
 }

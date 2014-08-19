@@ -28,15 +28,28 @@ func NewSrtm() *Srtm {
 
 func (self *Srtm) GetElevation(latitude, longitude float64) float64 {
 	srtmFileName := self.getSrtmFileName(latitude, longitude)
+	log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
 	srtmData := GetSrtmData()
 
 	if _, err := os.Stat(srtmFileName); os.IsNotExist(err) {
 		srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
+		fmt.Printf("srtmFileUrl=%v", srtmFileUrl)
 		_ = srtmFileUrl
 		if srtmFileUrl == nil {
 			return math.NaN()
 		}
+
+		response, err := http.Get(srtmFileUrl.Url)
+		if err != nil {
+			// TODO
+			log.Print("Error:", err.Error())
+			return math.NaN()
+		}
+
+		responseBytes, _ := ioutil.ReadAll(response.Body)
+		//log.Print(string(responseBytes))
+
 		return 0
 	}
 
@@ -69,8 +82,8 @@ type SrtmFile struct {
 
 func newSrtmFile() *SrtmFile {
 	// TODO; check if file exists if not retrieve and stored it
-    // TODO
-    return nil
+	// TODO
+	return nil
 }
 
 func (self *SrtmFile) getElevation(latitude, longitude float64) float64 {
