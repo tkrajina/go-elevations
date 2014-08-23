@@ -1,10 +1,10 @@
-test:
-	go test -v ./geoelevations
-install: test
-	go install ./geoelevations
+install: gofmt
+	go install . ./geoelevations
+gofmt:
+	gofmt -w .
 goimports:
 	goimports -w .
-gofmt:
-	gofmt -w ./geoelevations
-reload-srtm-data:
-	go run reloadjson.go
+test: install
+	go test -v ./geoelevations
+ctags:
+	ctags -R .
