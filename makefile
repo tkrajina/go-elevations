@@ -1,7 +1,7 @@
 install: gofmt
 	go install . ./geoelevations
 gofmt:
-	gofmt -w .
+	gofmt -w . ./geoelevations
 goimports:
 	goimports -w .
 test: install
