@@ -32,8 +32,11 @@ func TestFindSrtmFileName(t *testing.T) {
 
 func TestGetElevation(t *testing.T) {
 	srtm := NewSrtm()
-	elevation := srtm.GetElevation(45.0, 13.0)
-	if math.IsNaN(elevation) {
+	elevation, err := srtm.GetElevation(45.2775, 13.726111)
+	if err != nil {
+		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
+	}
+	if math.IsNaN(elevation) || elevation == 0.0 {
 		t.Errorf("Invalid elevation:%v", elevation)
 	}
 }

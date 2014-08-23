@@ -1,7 +1,7 @@
 package geoelevations
 
 import (
-	"fmt"
+	//"fmt"
 	"strings"
 )
 
@@ -10,6 +10,7 @@ type SrtmUrl struct {
 	Url  string
 }
 
+// Info (to be (se)serialized) about all the SRTM files and their URLs
 type SrtmData struct {
 	Srtm1 []SrtmUrl
 	Srtm3 []SrtmUrl

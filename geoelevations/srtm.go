@@ -26,34 +26,20 @@ func NewSrtm() *Srtm {
 	return new(Srtm)
 }
 
-func (self *Srtm) GetElevation(latitude, longitude float64) float64 {
+func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
 	srtmFileName := self.getSrtmFileName(latitude, longitude)
 	log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
 	srtmData := GetSrtmData()
 
-	if _, err := os.Stat(srtmFileName); os.IsNotExist(err) {
-		srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
-		fmt.Printf("srtmFileUrl=%v", srtmFileUrl)
-		_ = srtmFileUrl
-		if srtmFileUrl == nil {
-			return math.NaN()
-		}
-
-		response, err := http.Get(srtmFileUrl.Url)
-		if err != nil {
-			// TODO
-			log.Print("Error:", err.Error())
-			return math.NaN()
-		}
-
-		responseBytes, _ := ioutil.ReadAll(response.Body)
-		//log.Print(string(responseBytes))
-
-		return 0
+	// TODO Cache files...
+	srtmFile := newSrtmFile(srtmFileName, "")
+	srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
+	if srtmFileUrl != nil {
+		srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url)
 	}
 
-	return 0
+	return srtmFile.getElevation(latitude, longitude)
 }
 
 func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
@@ -77,17 +63,45 @@ func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
 type SrtmFile struct {
 	contents        []byte
 	fileName        string
+	fileUrl         string
 	isValidSrtmFile bool
 }
 
-func newSrtmFile() *SrtmFile {
-	// TODO; check if file exists if not retrieve and stored it
-	// TODO
-	return nil
+func newSrtmFile(fileName, fileUrl string) *SrtmFile {
+	result := SrtmFile{}
+	result.fileName = fileName
+	result.fileUrl = fileUrl
+	result.isValidSrtmFile = len(fileUrl) > 0
+	return &result
 }
 
-func (self *SrtmFile) getElevation(latitude, longitude float64) float64 {
-	return 0.0
+func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
+	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
+		return math.NaN(), nil
+	}
+
+	if _, err := os.Stat(self.fileName); os.IsNotExist(err) {
+		log.Printf("Retrieving: %s", self.fileUrl)
+		response, err := http.Get(self.fileUrl)
+		if err != nil {
+			log.Printf("Error retrieving file: %s", err.Error())
+			return math.NaN(), err
+		}
+
+		responseBytes, _ := ioutil.ReadAll(response.Body)
+
+		f, err := os.Create(self.fileName)
+		if err != nil {
+			log.Printf("Error writing file %s: %s", self.fileName, err.Error())
+			return math.NaN(), err
+		}
+		defer f.Close()
+
+		f.Write(responseBytes)
+		log.Printf("Written %d bytes to %s", len(responseBytes), self.fileName)
+	}
+
+	return 0.0, nil
 }
 
 // ----------------------------------------------------------------------------------------------------
