@@ -6,7 +6,8 @@ import (
 )
 
 type SrtmUrl struct {
-	File string
+	// FileName without extension
+	Name string
 	Url  string
 }
 
@@ -27,7 +28,7 @@ func (self *SrtmData) GetBestSrtmUrl(fileName string) *SrtmUrl {
 
 func (self *SrtmData) GetSrtm1Url(fileName string) *SrtmUrl {
 	for _, srtmUrl := range self.Srtm1 {
-		if strings.HasPrefix(srtmUrl.File, fileName) {
+		if strings.HasPrefix(fileName, srtmUrl.Name) {
 			return &srtmUrl
 		}
 	}
@@ -36,7 +37,7 @@ func (self *SrtmData) GetSrtm1Url(fileName string) *SrtmUrl {
 
 func (self *SrtmData) GetSrtm3Url(fileName string) *SrtmUrl {
 	for _, srtmUrl := range self.Srtm3 {
-		if strings.HasPrefix(srtmUrl.File, fileName) {
+		if strings.HasPrefix(srtmUrl.Name, fileName) {
 			return &srtmUrl
 		}
 	}

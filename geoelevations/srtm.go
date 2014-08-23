@@ -65,27 +65,34 @@ type SrtmFile struct {
 	fileName        string
 	fileUrl         string
 	isValidSrtmFile bool
+	fileRetrieved   bool
 }
 
 func newSrtmFile(fileName, fileUrl string) *SrtmFile {
 	result := SrtmFile{}
 	result.fileName = fileName
-	result.fileUrl = fileUrl
 	result.isValidSrtmFile = len(fileUrl) > 0
+
+	result.fileUrl = fileUrl
+	if !strings.HasSuffix(result.fileUrl, ".zip") {
+		result.fileUrl += ".zip"
+	}
+
 	return &result
 }
 
-func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
+func (self SrtmFile) loadContents() error {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
-		return math.NaN(), nil
+		return nil
 	}
 
+	// Retrieve if needed:
 	if _, err := os.Stat(self.fileName); os.IsNotExist(err) {
 		log.Printf("Retrieving: %s", self.fileUrl)
 		response, err := http.Get(self.fileUrl)
 		if err != nil {
 			log.Printf("Error retrieving file: %s", err.Error())
-			return math.NaN(), err
+			return err
 		}
 
 		responseBytes, _ := ioutil.ReadAll(response.Body)
@@ -93,12 +100,38 @@ func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) 
 		f, err := os.Create(self.fileName)
 		if err != nil {
 			log.Printf("Error writing file %s: %s", self.fileName, err.Error())
-			return math.NaN(), err
+			return err
 		}
 		defer f.Close()
 
 		f.Write(responseBytes)
 		log.Printf("Written %d bytes to %s", len(responseBytes), self.fileName)
+	}
+
+	f, err := os.Open(self.fileName)
+	if err != nil {
+		log.Printf("Error loading file %s: %s", self.fileName, err.Error())
+	}
+	defer f.Close()
+
+	self.contents, err = ioutil.ReadAll(f)
+	if err != nil {
+		log.Printf("Error loading file %s: %s", self.fileName, err.Error())
+	}
+
+	return nil
+}
+
+func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
+	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
+		return math.NaN(), nil
+	}
+
+	if len(self.contents) == 0 {
+		err := self.loadContents()
+		if err != nil {
+			return math.NaN(), err
+		}
 	}
 
 	return 0.0, nil
@@ -143,7 +176,6 @@ func LoadSrtmData() (*SrtmData, error) {
 }
 
 func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {
-
 	if depth >= 2 {
 		return []SrtmUrl{}, nil
 	}
@@ -160,7 +192,9 @@ func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {
 		urlLowercase := strings.ToLower(tmpUrl)
 		if strings.HasSuffix(urlLowercase, ".hgt.zip") {
 			parts := strings.Split(tmpUrl, "/")
-			srtmUrl := SrtmUrl{File: parts[len(parts)-1], Url: fmt.Sprintf("%s/%s", url, tmpUrl)}
+			name := parts[len(parts)-1]
+			name = strings.Replace(name, ".hgt.zip", "", -1)
+			srtmUrl := SrtmUrl{Name: name, Url: fmt.Sprintf("%s/%s", url, tmpUrl)}
 			result = append(result, srtmUrl)
 			log.Printf("> %s/%s -> %s\n", url, tmpUrl, tmpUrl)
 		} else if len(urlLowercase) > 0 && urlLowercase[0] != '/' && !strings.HasPrefix(urlLowercase, "http") && !strings.HasSuffix(urlLowercase, ".jpg") {
