@@ -66,6 +66,7 @@ type SrtmFile struct {
 	fileUrl         string
 	isValidSrtmFile bool
 	fileRetrieved   bool
+	squareSize      int
 }
 
 func newSrtmFile(name, fileUrl string) *SrtmFile {
@@ -110,16 +111,21 @@ func (self SrtmFile) loadContents() error {
 		log.Printf("Written %d bytes to %s", len(responseBytes), fileName)
 	}
 
-	f, err := os.Open(fileName)
+	contents, err := unzipFile(fileName)
 	if err != nil {
 		log.Printf("Error loading file %s: %s", fileName, err.Error())
 	}
-	defer f.Close()
+	self.contents = contents
 
-	self.contents, err = ioutil.ReadAll(f)
-	if err != nil {
-		log.Printf("Error loading file %s: %s", fileName, err.Error())
+	squareSizeFloat := math.Sqrt(float64(len(self.contents)) / 2.0)
+	self.squareSize = int(squareSizeFloat)
+
+	if squareSizeFloat != float64(self.squareSize) {
+		log.Printf("Invalid size for file %s: %d", fileName, len(self.contents))
+		return err
 	}
+
+	log.Printf("Loaded %dbytes from %s, squareSize=%d", len(self.contents), fileName, self.squareSize)
 
 	return nil
 }
@@ -130,7 +136,6 @@ func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) 
 		return math.NaN(), nil
 	}
 
-	log.Printf("contents=%d", len(self.contents))
 	if len(self.contents) == 0 {
 		err := self.loadContents()
 		if err != nil {
@@ -139,6 +144,9 @@ func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) 
 	}
 
 	return 0.0, nil
+}
+
+func (self SrtmFile) getRowAndColumn(latitude, longitude float64) {
 }
 
 // ----------------------------------------------------------------------------------------------------
