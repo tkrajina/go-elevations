@@ -15,19 +15,19 @@ func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileNa
 }
 
 func TestFindSrtmFileName(t *testing.T) {
-	checkSrtmFileName(t, 45, 13, "N45E013.hgt")
-	checkSrtmFileName(t, 45.1, 13, "N45E013.hgt")
-	checkSrtmFileName(t, 44.9, 13, "N44E013.hgt")
-	checkSrtmFileName(t, 45, 13.1, "N45E013.hgt")
-	checkSrtmFileName(t, 45, 12.9, "N45E012.hgt")
-	checkSrtmFileName(t, 25, -80, "N25W080.hgt")
-	checkSrtmFileName(t, 25, -80.1, "N25W081.hgt")
-	checkSrtmFileName(t, 25, -79.9, "N25W080.hgt")
-	checkSrtmFileName(t, 25.1, -80, "N25W080.hgt")
-	checkSrtmFileName(t, -32, 152, "S32E152.hgt")
+	checkSrtmFileName(t, 45, 13, "N45E013")
+	checkSrtmFileName(t, 45.1, 13, "N45E013")
+	checkSrtmFileName(t, 44.9, 13, "N44E013")
+	checkSrtmFileName(t, 45, 13.1, "N45E013")
+	checkSrtmFileName(t, 45, 12.9, "N45E012")
+	checkSrtmFileName(t, 25, -80, "N25W080")
+	checkSrtmFileName(t, 25, -80.1, "N25W081")
+	checkSrtmFileName(t, 25, -79.9, "N25W080")
+	checkSrtmFileName(t, 25.1, -80, "N25W080")
+	checkSrtmFileName(t, -32, 152, "S32E152")
 
 	// This file don't exists but the get_file_name is expected to return the supposed file:
-	checkSrtmFileName(t, 0, 0, "N00E000.hgt")
+	checkSrtmFileName(t, 0, 0, "N00E000")
 }
 
 func TestGetElevation(t *testing.T) {

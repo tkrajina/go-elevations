@@ -56,21 +56,21 @@ func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
 	latPart := int(math.Abs(math.Floor(latitude)))
 	lonPart := int(math.Abs(math.Floor(longitude)))
 
-	return fmt.Sprintf("%s%02d%s%03d.hgt", string(northSouth), latPart, string(eastWest), lonPart)
+	return fmt.Sprintf("%s%02d%s%03d", string(northSouth), latPart, string(eastWest), lonPart)
 }
 
 // Struct with contents and some utility methods of a single SRTM file
 type SrtmFile struct {
 	contents        []byte
-	fileName        string
+	name            string
 	fileUrl         string
 	isValidSrtmFile bool
 	fileRetrieved   bool
 }
 
-func newSrtmFile(fileName, fileUrl string) *SrtmFile {
+func newSrtmFile(name, fileUrl string) *SrtmFile {
 	result := SrtmFile{}
-	result.fileName = fileName
+	result.name = name
 	result.isValidSrtmFile = len(fileUrl) > 0
 
 	result.fileUrl = fileUrl
@@ -86,9 +86,11 @@ func (self SrtmFile) loadContents() error {
 		return nil
 	}
 
+	fileName := fmt.Sprintf("%s.hgt.zip", self.name)
+
 	// Retrieve if needed:
-	if _, err := os.Stat(self.fileName); os.IsNotExist(err) {
-		log.Printf("Retrieving: %s", self.fileUrl)
+	if _, err := os.Stat(fileName); os.IsNotExist(err) {
+		log.Printf("File %s not retrieved => retrieving: %s", fileName, self.fileUrl)
 		response, err := http.Get(self.fileUrl)
 		if err != nil {
 			log.Printf("Error retrieving file: %s", err.Error())
@@ -97,26 +99,26 @@ func (self SrtmFile) loadContents() error {
 
 		responseBytes, _ := ioutil.ReadAll(response.Body)
 
-		f, err := os.Create(self.fileName)
+		f, err := os.Create(fileName)
 		if err != nil {
-			log.Printf("Error writing file %s: %s", self.fileName, err.Error())
+			log.Printf("Error writing file %s: %s", fileName, err.Error())
 			return err
 		}
 		defer f.Close()
 
 		f.Write(responseBytes)
-		log.Printf("Written %d bytes to %s", len(responseBytes), self.fileName)
+		log.Printf("Written %d bytes to %s", len(responseBytes), fileName)
 	}
 
-	f, err := os.Open(self.fileName)
+	f, err := os.Open(fileName)
 	if err != nil {
-		log.Printf("Error loading file %s: %s", self.fileName, err.Error())
+		log.Printf("Error loading file %s: %s", fileName, err.Error())
 	}
 	defer f.Close()
 
 	self.contents, err = ioutil.ReadAll(f)
 	if err != nil {
-		log.Printf("Error loading file %s: %s", self.fileName, err.Error())
+		log.Printf("Error loading file %s: %s", fileName, err.Error())
 	}
 
 	return nil
@@ -124,9 +126,11 @@ func (self SrtmFile) loadContents() error {
 
 func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
+		log.Printf("Invalid file %s", self.name)
 		return math.NaN(), nil
 	}
 
+	log.Printf("contents=%d", len(self.contents))
 	if len(self.contents) == 0 {
 		err := self.loadContents()
 		if err != nil {
