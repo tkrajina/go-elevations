@@ -27,22 +27,22 @@ func NewSrtm() *Srtm {
 }
 
 func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
-	srtmFileName := self.getSrtmFileName(latitude, longitude)
+	srtmFileName, srtmLatitude, srtmLongitude := self.getSrtmFileNameAndCoordinates(latitude, longitude)
 	log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
 	srtmData := GetSrtmData()
 
 	// TODO Cache files...
-	srtmFile := newSrtmFile(srtmFileName, "")
+	srtmFile := newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
 	srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
 	if srtmFileUrl != nil {
-		srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url)
+		srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, srtmLatitude, srtmLongitude)
 	}
 
 	return srtmFile.getElevation(latitude, longitude)
 }
 
-func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
+func (self *Srtm) getSrtmFileNameAndCoordinates(latitude, longitude float64) (string, float64, float64) {
 	northSouth := 'S'
 	if latitude >= 0 {
 		northSouth = 'N'
@@ -56,23 +56,28 @@ func (self *Srtm) getSrtmFileName(latitude, longitude float64) string {
 	latPart := int(math.Abs(math.Floor(latitude)))
 	lonPart := int(math.Abs(math.Floor(longitude)))
 
-	return fmt.Sprintf("%s%02d%s%03d", string(northSouth), latPart, string(eastWest), lonPart)
+	srtmFileName := fmt.Sprintf("%s%02d%s%03d", string(northSouth), latPart, string(eastWest), lonPart)
+
+	return srtmFileName, math.Floor(latitude), math.Floor(longitude)
 }
 
 // Struct with contents and some utility methods of a single SRTM file
 type SrtmFile struct {
-	contents        []byte
-	name            string
-	fileUrl         string
-	isValidSrtmFile bool
-	fileRetrieved   bool
-	squareSize      int
+	latitude, longitude float64
+	contents            []byte
+	name                string
+	fileUrl             string
+	isValidSrtmFile     bool
+	fileRetrieved       bool
+	squareSize          int
 }
 
-func newSrtmFile(name, fileUrl string) *SrtmFile {
+func newSrtmFile(name, fileUrl string, latitude, longitude float64) *SrtmFile {
 	result := SrtmFile{}
 	result.name = name
 	result.isValidSrtmFile = len(fileUrl) > 0
+	result.latitude = latitude
+	result.longitude = longitude
 
 	result.fileUrl = fileUrl
 	if !strings.HasSuffix(result.fileUrl, ".zip") {
