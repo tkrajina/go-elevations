@@ -3,7 +3,6 @@ package geoelevations
 import (
 	"fmt"
 	"log"
-	"math"
 	"testing"
 )
 
@@ -43,8 +42,9 @@ func TestGetElevation(t *testing.T) {
 	elevation, err := srtm.GetElevation(45.2775, 13.726111)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
+		return
 	}
-	if math.IsNaN(elevation) || elevation == 0.0 {
-		t.Errorf("Invalid elevation:%v", elevation)
+	if elevation != 246 {
+		t.Errorf("Invalid elevation for Višnjan:%v", elevation)
 	}
 }

@@ -3,6 +3,7 @@ package geoelevations
 import (
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -87,7 +88,7 @@ func newSrtmFile(name, fileUrl string, latitude, longitude float64) *SrtmFile {
 	return &result
 }
 
-func (self SrtmFile) loadContents() error {
+func (self *SrtmFile) loadContents() error {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		return nil
 	}
@@ -122,20 +123,12 @@ func (self SrtmFile) loadContents() error {
 	}
 	self.contents = contents
 
-	squareSizeFloat := math.Sqrt(float64(len(self.contents)) / 2.0)
-	self.squareSize = int(squareSizeFloat)
-
-	if squareSizeFloat != float64(self.squareSize) {
-		log.Printf("Invalid size for file %s: %d", fileName, len(self.contents))
-		return err
-	}
-
 	log.Printf("Loaded %dbytes from %s, squareSize=%d", len(self.contents), fileName, self.squareSize)
 
 	return nil
 }
 
-func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
+func (self *SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		log.Printf("Invalid file %s", self.name)
 		return math.NaN(), nil
@@ -148,10 +141,60 @@ func (self SrtmFile) getElevation(latitude, longitude float64) (float64, error) 
 		}
 	}
 
-	return 0.0, nil
+	if self.squareSize <= 0 {
+		squareSizeFloat := math.Sqrt(float64(len(self.contents)) / 2.0)
+		self.squareSize = int(squareSizeFloat)
+
+		if squareSizeFloat != float64(self.squareSize) || self.squareSize <= 0 {
+			return math.NaN(), errors.New(fmt.Sprintf("Invalid size for file %s: %d", self.name, len(self.contents)))
+		}
+	}
+
+	row, column := self.getRowAndColumn(latitude, longitude)
+	//log.Printf("(%f, %f) => row, column = %d, %d", latitude, longitude, row, column)
+	elevation := self.getElevationFromRowAndColumn(row, column)
+
+	return elevation, nil
 }
 
-func (self SrtmFile) getRowAndColumn(latitude, longitude float64) {
+func (self SrtmFile) getElevationFromRowAndColumn(row, column int) float64 {
+	i := row*self.squareSize + column
+	byte1 := self.contents[i*2]
+	byte2 := self.contents[i*2+1]
+	result := int(byte1)*256 + int(byte2)
+
+	if result > 9000 {
+		return math.NaN()
+	}
+
+	return float64(result)
+	/*
+	   i = row * (@square_side) + column
+
+	   i < @square_side ** 2 or raise "Invalid i=#{i}"
+
+	   @file.seek(i * 2)
+	   bytes = @file.read(2)
+	   byte_1 = bytes[0].ord
+	   byte_2 = bytes[1].ord
+
+	   result = byte_1 * 256 + byte_2
+
+	   if result > 9000
+	       # TODO(TK) try to detect the elevation from neighbour point:
+	       return nil
+	   end
+
+	   result
+	*/
+}
+
+func (self SrtmFile) getRowAndColumn(latitude, longitude float64) (int, int) {
+	row := int((self.latitude + 1.0 - latitude) * (float64(self.squareSize - 1.0)))
+	column := int((longitude - self.longitude) * (float64(self.squareSize - 1.0)))
+	//log.Printf("squareSize=%v", self.squareSize)
+	//log.Printf("row, column = %v, %v", row, column)
+	return row, column
 }
 
 // ----------------------------------------------------------------------------------------------------
