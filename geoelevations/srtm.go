@@ -21,10 +21,13 @@ const (
 )
 
 type Srtm struct {
+	cache map[string]*SrtmFile
 }
 
 func NewSrtm() *Srtm {
-	return new(Srtm)
+	result := new(Srtm)
+	result.cache = make(map[string]*SrtmFile)
+	return result
 }
 
 func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
@@ -32,12 +35,14 @@ func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
 	log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
 	srtmData := GetSrtmData()
-
-	// TODO Cache files...
-	srtmFile := newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
-	srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
-	if srtmFileUrl != nil {
-		srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, srtmLatitude, srtmLongitude)
+	srtmFile, ok := self.cache[srtmFileName]
+	if !ok {
+		srtmFile = newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
+		srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
+		if srtmFileUrl != nil {
+			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, srtmLatitude, srtmLongitude)
+		}
+		self.cache[srtmFileName] = srtmFile
 	}
 
 	return srtmFile.getElevation(latitude, longitude)
