@@ -37,14 +37,43 @@ func TestFindSrtmFileName(t *testing.T) {
 	checkSrtmFileName(t, 0, 0, "N00E000", 0, 0)
 }
 
-func TestGetElevation(t *testing.T) {
+func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
 	srtm := NewSrtm()
-	elevation, err := srtm.GetElevation(45.2775, 13.726111)
+	elevation, err := srtm.GetElevation(latitude, longitude)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
 		return
 	}
-	if elevation != 246 {
-		t.Errorf("Invalid elevation for Višnjan:%v", elevation)
+	if elevation != expectedElevation {
+		t.Errorf("Invalid elevation for (%f, %f): %f, but should be %f", latitude, longitude, elevation, expectedElevation)
+	}
+}
+
+func TestGetElevation(t *testing.T) {
+	checkElevation(t, 45.2775, 13.726111, 246)
+	checkElevation(t, -26.4, 146.25, 301)
+	checkElevation(t, -12.1, -77.016667, 133)
+	checkElevation(t, 40.75, -111.883333, 1298)
+}
+
+func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
+	srtm := NewSrtm()
+	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(40.75, -111.883333)
+	srtmData := GetSrtmData()
+	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
+	srtm3url := srtmData.GetSrtm3Url(srtmFileName)
+	if len(srtm1url.Url) == 0 || len(srtm3url.Url) == 0 {
+		t.Error("USA should have both srtm1 and srtm3 urls")
+	}
+}
+
+func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
+	srtm := NewSrtm()
+	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(45.2775, 13.726111)
+	srtmData := GetSrtmData()
+	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
+	srtm3url := srtmData.GetSrtm3Url(srtmFileName)
+	if !(srtm3url != nil && len(srtm3url.Url) > 0 && srtm1url == nil) {
+		t.Error("Europe should have both srtm1 and srtm3 urls")
 	}
 }
