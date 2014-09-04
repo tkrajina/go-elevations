@@ -1,7 +1,6 @@
 package geoelevations
 
 import (
-	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"path"
 	"strings"
 )
 
@@ -21,26 +21,42 @@ const (
 )
 
 type Srtm struct {
-	cache map[string]*SrtmFile
+	cacheDirectory string
+	cache          map[string]*SrtmFile
 }
 
-func NewSrtm() *Srtm {
+func NewSrtm(cacheDirectory string) (*Srtm, error) {
+	if len(cacheDirectory) == 0 {
+		// TODO: Windows
+		cacheDirectory = path.Join(os.Getenv("HOME"), ".geoelevations")
+	}
+	log.Printf("Using", cacheDirectory, "to cache SRTM files")
+
+	if _, err := os.Stat(cacheDirectory); os.IsNotExist(err) {
+		log.Print("Creating", cacheDirectory)
+
+		if err := os.Mkdir(cacheDirectory, os.ModeDir|0700); err != nil {
+			return nil, err
+		}
+	}
+
 	result := new(Srtm)
 	result.cache = make(map[string]*SrtmFile)
-	return result
+	result.cacheDirectory = cacheDirectory
+	return result, nil
 }
 
 func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
 	srtmFileName, srtmLatitude, srtmLongitude := self.getSrtmFileNameAndCoordinates(latitude, longitude)
 	log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
-	srtmData := GetSrtmData()
+	srtmData := newSrtmData(self.cacheDirectory)
 	srtmFile, ok := self.cache[srtmFileName]
 	if !ok {
-		srtmFile = newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
+		srtmFile = newSrtmFile(srtmFileName, "", self.cacheDirectory, srtmLatitude, srtmLongitude)
 		srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
 		if srtmFileUrl != nil {
-			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, srtmLatitude, srtmLongitude)
+			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, self.cacheDirectory, srtmLatitude, srtmLongitude)
 		}
 		self.cache[srtmFileName] = srtmFile
 	}
@@ -76,14 +92,16 @@ type SrtmFile struct {
 	isValidSrtmFile     bool
 	fileRetrieved       bool
 	squareSize          int
+	cacheDirectory      string
 }
 
-func newSrtmFile(name, fileUrl string, latitude, longitude float64) *SrtmFile {
+func newSrtmFile(name, fileUrl, cacheDirectory string, latitude, longitude float64) *SrtmFile {
 	result := SrtmFile{}
 	result.name = name
 	result.isValidSrtmFile = len(fileUrl) > 0
 	result.latitude = latitude
 	result.longitude = longitude
+	result.cacheDirectory = cacheDirectory
 
 	result.fileUrl = fileUrl
 	if !strings.HasSuffix(result.fileUrl, ".zip") {
@@ -98,7 +116,7 @@ func (self *SrtmFile) loadContents() error {
 		return nil
 	}
 
-	fileName := fmt.Sprintf("%s.hgt.zip", self.name)
+	fileName := path.Join(self.cacheDirectory, fmt.Sprintf("%s.hgt.zip", self.name))
 
 	// Retrieve if needed:
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
@@ -205,23 +223,6 @@ func (self SrtmFile) getRowAndColumn(latitude, longitude float64) (int, int) {
 // ----------------------------------------------------------------------------------------------------
 // Misc util functions
 // ----------------------------------------------------------------------------------------------------
-
-func GetSrtmData() *SrtmData {
-	f, err := os.Open("urls.json")
-	if err != nil {
-		panic("Can't find srtm urls")
-	}
-
-	bytes, err := ioutil.ReadAll(f)
-	if err != nil {
-		panic("Can't find srtm urls")
-	}
-
-	srtmData := new(SrtmData)
-	json.Unmarshal(bytes, srtmData)
-
-	return srtmData
-}
 
 func LoadSrtmData() (*SrtmData, error) {
 	result := new(SrtmData)

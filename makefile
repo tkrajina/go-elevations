@@ -1,10 +1,10 @@
-install: gofmt
+install: test
 	go install . ./geoelevations
+test:
+	go test -v ./geoelevations
 gofmt:
 	gofmt -w . ./geoelevations
 goimports:
 	goimports -w .
-test: install
-	go test -v ./geoelevations
 ctags:
 	ctags -R .
