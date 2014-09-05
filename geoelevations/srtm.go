@@ -23,6 +23,7 @@ const (
 type Srtm struct {
 	cacheDirectory string
 	cache          map[string]*SrtmFile
+	srtmData       SrtmData
 }
 
 func NewSrtm(cacheDirectory string) (*Srtm, error) {
@@ -30,7 +31,7 @@ func NewSrtm(cacheDirectory string) (*Srtm, error) {
 		// TODO: Windows
 		cacheDirectory = path.Join(os.Getenv("HOME"), ".geoelevations")
 	}
-	log.Printf("Using", cacheDirectory, "to cache SRTM files")
+	log.Printf("Using %s to cache SRTM files", cacheDirectory)
 
 	if _, err := os.Stat(cacheDirectory); os.IsNotExist(err) {
 		log.Print("Creating", cacheDirectory)
@@ -43,18 +44,18 @@ func NewSrtm(cacheDirectory string) (*Srtm, error) {
 	result := new(Srtm)
 	result.cache = make(map[string]*SrtmFile)
 	result.cacheDirectory = cacheDirectory
+	result.srtmData = *newSrtmData(cacheDirectory)
 	return result, nil
 }
 
 func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
 	srtmFileName, srtmLatitude, srtmLongitude := self.getSrtmFileNameAndCoordinates(latitude, longitude)
-	log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
+	//log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
-	srtmData := newSrtmData(self.cacheDirectory)
 	srtmFile, ok := self.cache[srtmFileName]
 	if !ok {
 		srtmFile = newSrtmFile(srtmFileName, "", self.cacheDirectory, srtmLatitude, srtmLongitude)
-		srtmFileUrl := srtmData.GetBestSrtmUrl(srtmFileName)
+		srtmFileUrl := self.srtmData.GetBestSrtmUrl(srtmFileName)
 		if srtmFileUrl != nil {
 			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, self.cacheDirectory, srtmLatitude, srtmLongitude)
 		}
@@ -158,6 +159,7 @@ func (self *SrtmFile) getElevation(latitude, longitude float64) (float64, error)
 	}
 
 	if len(self.contents) == 0 {
+		log.Println("load contents")
 		err := self.loadContents()
 		if err != nil {
 			return math.NaN(), err
