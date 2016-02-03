@@ -26,7 +26,11 @@ type Srtm struct {
 	srtmData       SrtmData
 }
 
-func NewSrtm(cacheDirectory string) (*Srtm, error) {
+func NewSrtm() (*Srtm, error) {
+	return NewSrtmWithCustomCacheDir("")
+}
+
+func NewSrtmWithCustomCacheDir(cacheDirectory string) (*Srtm, error) {
 	if len(cacheDirectory) == 0 {
 		// TODO: Windows
 		cacheDirectory = path.Join(os.Getenv("HOME"), ".geoelevations")

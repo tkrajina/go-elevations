@@ -7,7 +7,7 @@ import (
 )
 
 func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileName string, expectedSrtmLatitude, expectedSrtmLongitude float64) {
-	srtm, _ := NewSrtm("")
+	srtm, _ := NewSrtm()
 	fileName, srtmLatitude, srtmLongitude := srtm.getSrtmFileNameAndCoordinates(latitude, longitude)
 	log.Printf("Checking %s", fileName)
 	if fileName != expectedFileName {
@@ -38,7 +38,7 @@ func TestFindSrtmFileName(t *testing.T) {
 }
 
 func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
-	srtm, _ := NewSrtm("")
+	srtm, _ := NewSrtm()
 	elevation, err := srtm.GetElevation(latitude, longitude)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
@@ -57,7 +57,7 @@ func TestGetElevation(t *testing.T) {
 }
 
 func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
-	srtm, _ := NewSrtm("")
+	srtm, _ := NewSrtm()
 	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(40.75, -111.883333)
 	srtmData := newSrtmData(".")
 	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
@@ -68,7 +68,7 @@ func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
 }
 
 func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
-	srtm, _ := NewSrtm("")
+	srtm, _ := NewSrtm()
 	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(45.2775, 13.726111)
 	srtmData := newSrtmData(".")
 	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
