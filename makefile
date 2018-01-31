@@ -1,5 +1,3 @@
-install: test
-	go install . ./geoelevations
 test:
 	go test -v ./geoelevations
 gofmt:
