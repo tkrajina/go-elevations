@@ -1,6 +1,7 @@
 package geoelevations
 
 import (
+	"io/ioutil"
 	"log"
 	"os"
 	"path"
@@ -34,13 +35,26 @@ func NewLocalFileSrtmStorage(cacheDirectory string) (*LocalFileSrtmStorage, erro
 	return &LocalFileSrtmStorage{cacheDirectory: cacheDirectory}, nil
 }
 func (ds LocalFileSrtmStorage) LoadFile(fn string) ([]byte, error) {
-	return nil, nil
+	f, err := os.Open(path.Join(ds.cacheDirectory, fn))
+	if err != nil {
+		return nil, err
+	}
+	bytes, err := ioutil.ReadAll(f)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
 }
 func (ds LocalFileSrtmStorage) IsNotExists(err error) bool {
-	return false
+	return os.IsNotExist(err)
 }
 func (ds LocalFileSrtmStorage) SaveFile(fn string, bytes []byte) error {
-	return nil
+	f, err := os.Create(path.Join(ds.cacheDirectory, fn))
+	if err != nil {
+		return err
+	}
+	_, err = f.Write(bytes)
+	return err
 }
 
 var _ SrtmLocalStorage = new(LocalFileSrtmStorage)
