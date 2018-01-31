@@ -3,6 +3,7 @@ package geoelevations
 import (
 	"fmt"
 	"log"
+	"net/http"
 	"testing"
 )
 
@@ -39,7 +40,7 @@ func TestFindSrtmFileName(t *testing.T) {
 
 func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
 	srtm, _ := NewSrtm()
-	elevation, err := srtm.GetElevation(latitude, longitude)
+	elevation, err := srtm.GetElevation(http.DefaultClient, latitude, longitude)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
 		return

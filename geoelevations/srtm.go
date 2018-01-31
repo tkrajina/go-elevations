@@ -52,7 +52,7 @@ func NewSrtmWithCustomCacheDir(cacheDirectory string) (*Srtm, error) {
 	return result, nil
 }
 
-func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
+func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64) (float64, error) {
 	srtmFileName, srtmLatitude, srtmLongitude := self.getSrtmFileNameAndCoordinates(latitude, longitude)
 	//log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
@@ -66,7 +66,7 @@ func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
 		self.cache[srtmFileName] = srtmFile
 	}
 
-	return srtmFile.getElevation(latitude, longitude)
+	return srtmFile.getElevation(client, latitude, longitude)
 }
 
 func (self *Srtm) getSrtmFileNameAndCoordinates(latitude, longitude float64) (string, float64, float64) {
@@ -116,7 +116,7 @@ func newSrtmFile(name, fileUrl, cacheDirectory string, latitude, longitude float
 	return &result
 }
 
-func (self *SrtmFile) loadContents() error {
+func (self *SrtmFile) loadContents(client *http.Client) error {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		return nil
 	}
@@ -126,7 +126,11 @@ func (self *SrtmFile) loadContents() error {
 	// Retrieve if needed:
 	if _, err := os.Stat(fileName); os.IsNotExist(err) {
 		log.Printf("File %s not retrieved => retrieving: %s", fileName, self.fileUrl)
-		response, err := http.Get(self.fileUrl)
+		req, err := http.NewRequest(http.MethodGet, self.fileUrl, nil)
+		if err != nil {
+			return err
+		}
+		response, err := client.Do(req)
 		if err != nil {
 			log.Printf("Error retrieving file: %s", err.Error())
 			return err
@@ -156,7 +160,7 @@ func (self *SrtmFile) loadContents() error {
 	return nil
 }
 
-func (self *SrtmFile) getElevation(latitude, longitude float64) (float64, error) {
+func (self *SrtmFile) getElevation(client *http.Client, latitude, longitude float64) (float64, error) {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		log.Printf("Invalid file %s", self.name)
 		return math.NaN(), nil
@@ -164,7 +168,7 @@ func (self *SrtmFile) getElevation(latitude, longitude float64) (float64, error)
 
 	if len(self.contents) == 0 {
 		log.Println("load contents")
-		err := self.loadContents()
+		err := self.loadContents(client)
 		if err != nil {
 			return math.NaN(), err
 		}
