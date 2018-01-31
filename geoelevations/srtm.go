@@ -9,8 +9,6 @@ import (
 	"log"
 	"math"
 	"net/http"
-	"os"
-	"path"
 	"strings"
 )
 
@@ -21,35 +19,35 @@ const (
 )
 
 type Srtm struct {
-	cacheDirectory string
-	cache          map[string]*SrtmFile
-	srtmData       SrtmData
+	cache map[string]*SrtmFile
+
+	srtmData SrtmData
+	storage  SrtmLocalStorage
 }
 
 func NewSrtm() (*Srtm, error) {
 	return NewSrtmWithCustomCacheDir("")
 }
 
+func NewSrtmWithCustomStorage(storage SrtmLocalStorage) (*Srtm, error) {
+	srtmData, err := newSrtmData(storage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Srtm{
+		cache:    make(map[string]*SrtmFile),
+		storage:  storage,
+		srtmData: *srtmData,
+	}, nil
+}
+
 func NewSrtmWithCustomCacheDir(cacheDirectory string) (*Srtm, error) {
-	if len(cacheDirectory) == 0 {
-		// TODO: Windows
-		cacheDirectory = path.Join(os.Getenv("HOME"), ".geoelevations")
+	storage, err := NewLocalFileSrtmStorage(cacheDirectory)
+	if err != nil {
+		return nil, err
 	}
-	log.Printf("Using %s to cache SRTM files", cacheDirectory)
-
-	if _, err := os.Stat(cacheDirectory); os.IsNotExist(err) {
-		log.Print("Creating", cacheDirectory)
-
-		if err := os.Mkdir(cacheDirectory, os.ModeDir|0700); err != nil {
-			return nil, err
-		}
-	}
-
-	result := new(Srtm)
-	result.cache = make(map[string]*SrtmFile)
-	result.cacheDirectory = cacheDirectory
-	result.srtmData = *newSrtmData(cacheDirectory)
-	return result, nil
+	return NewSrtmWithCustomStorage(storage)
 }
 
 func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64) (float64, error) {
@@ -58,15 +56,15 @@ func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64)
 
 	srtmFile, ok := self.cache[srtmFileName]
 	if !ok {
-		srtmFile = newSrtmFile(srtmFileName, "", self.cacheDirectory, srtmLatitude, srtmLongitude)
+		srtmFile = newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
 		srtmFileUrl := self.srtmData.GetBestSrtmUrl(srtmFileName)
 		if srtmFileUrl != nil {
-			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, self.cacheDirectory, srtmLatitude, srtmLongitude)
+			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, srtmLatitude, srtmLongitude)
 		}
 		self.cache[srtmFileName] = srtmFile
 	}
 
-	return srtmFile.getElevation(client, latitude, longitude)
+	return srtmFile.getElevation(client, self.storage, latitude, longitude)
 }
 
 func (self *Srtm) getSrtmFileNameAndCoordinates(latitude, longitude float64) (string, float64, float64) {
@@ -97,16 +95,14 @@ type SrtmFile struct {
 	isValidSrtmFile     bool
 	fileRetrieved       bool
 	squareSize          int
-	cacheDirectory      string
 }
 
-func newSrtmFile(name, fileUrl, cacheDirectory string, latitude, longitude float64) *SrtmFile {
+func newSrtmFile(name, fileUrl string, latitude, longitude float64) *SrtmFile {
 	result := SrtmFile{}
 	result.name = name
 	result.isValidSrtmFile = len(fileUrl) > 0
 	result.latitude = latitude
 	result.longitude = longitude
-	result.cacheDirectory = cacheDirectory
 
 	result.fileUrl = fileUrl
 	if !strings.HasSuffix(result.fileUrl, ".zip") {
@@ -116,40 +112,45 @@ func newSrtmFile(name, fileUrl, cacheDirectory string, latitude, longitude float
 	return &result
 }
 
-func (self *SrtmFile) loadContents(client *http.Client) error {
+func (self *SrtmFile) loadContents(client *http.Client, storage SrtmLocalStorage) error {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		return nil
 	}
 
-	fileName := path.Join(self.cacheDirectory, fmt.Sprintf("%s.hgt.zip", self.name))
+	fileName := fmt.Sprintf("%s.hgt.zip", self.name)
 
-	// Retrieve if needed:
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		log.Printf("File %s not retrieved => retrieving: %s", fileName, self.fileUrl)
-		req, err := http.NewRequest(http.MethodGet, self.fileUrl, nil)
-		if err != nil {
+	bytes, err := storage.LoadFile(fileName)
+	if err != nil {
+		if storage.IsNotExists(err) {
+			log.Printf("File %s not retrieved => retrieving: %s", fileName, self.fileUrl)
+			req, err := http.NewRequest(http.MethodGet, self.fileUrl, nil)
+			if err != nil {
+				return err
+			}
+			response, err := client.Do(req)
+			if err != nil {
+				log.Printf("Error retrieving file: %s", err.Error())
+				return err
+			}
+
+			responseBytes, err := ioutil.ReadAll(response.Body)
+			if err != nil {
+				return err
+			}
+			_ = response.Body.Close()
+
+			if err := storage.SaveFile(fileName, responseBytes); err != nil {
+				return err
+			}
+			log.Printf("Written %d bytes to %s", len(responseBytes), fileName)
+
+			bytes = responseBytes
+		} else {
 			return err
 		}
-		response, err := client.Do(req)
-		if err != nil {
-			log.Printf("Error retrieving file: %s", err.Error())
-			return err
-		}
-
-		responseBytes, _ := ioutil.ReadAll(response.Body)
-
-		f, err := os.Create(fileName)
-		if err != nil {
-			log.Printf("Error writing file %s: %s", fileName, err.Error())
-			return err
-		}
-		defer f.Close()
-
-		f.Write(responseBytes)
-		log.Printf("Written %d bytes to %s", len(responseBytes), fileName)
 	}
 
-	contents, err := unzipFile(fileName)
+	contents, err := unzipBytes(bytes)
 	if err != nil {
 		log.Printf("Error loading file %s: %s", fileName, err.Error())
 	}
@@ -160,7 +161,7 @@ func (self *SrtmFile) loadContents(client *http.Client) error {
 	return nil
 }
 
-func (self *SrtmFile) getElevation(client *http.Client, latitude, longitude float64) (float64, error) {
+func (self *SrtmFile) getElevation(client *http.Client, storage SrtmLocalStorage, latitude, longitude float64) (float64, error) {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		log.Printf("Invalid file %s", self.name)
 		return math.NaN(), nil
@@ -168,7 +169,7 @@ func (self *SrtmFile) getElevation(client *http.Client, latitude, longitude floa
 
 	if len(self.contents) == 0 {
 		log.Println("load contents")
-		err := self.loadContents(client)
+		err := self.loadContents(client, storage)
 		if err != nil {
 			return math.NaN(), err
 		}

@@ -45,12 +45,11 @@ func ungzipBytes(b *[]byte) (*[]byte, error) {
 	return &bb, nil
 }
 
-func unzipFile(fileName string) ([]byte, error) {
-	r, err := zip.OpenReader(fileName)
+func unzipBytes(byts []byte) ([]byte, error) {
+	r, err := zip.NewReader(bytes.NewReader(byts), int64(len(byts)))
 	if err != nil {
 		return nil, err
 	}
-	defer r.Close()
 
 	// Iterate through the files in the archive,
 	// printing some of their contents.
@@ -58,19 +57,19 @@ func unzipFile(fileName string) ([]byte, error) {
 		fmt.Printf("Contents of %s:\n", f.Name)
 		rc, err := f.Open()
 		if err != nil {
-			log.Printf("Error reading %s from %s: %s", f.Name, fileName, err.Error())
+			log.Printf("Error reading %s: %s", f.Name, err.Error())
 			return nil, err
 		}
 		defer rc.Close()
 
 		bytes, err := ioutil.ReadAll(rc)
 		if err != nil {
-			log.Printf("Error reading %s from %s: %s", f.Name, fileName, err.Error())
+			log.Printf("Error reading %s: %s", f.Name, err.Error())
 			return nil, err
 		}
 
 		return bytes, nil
 	}
 
-	return nil, errors.New(fmt.Sprintf("No file in .zip %s", fileName))
+	return nil, errors.New(fmt.Sprintf("No file in .zip"))
 }

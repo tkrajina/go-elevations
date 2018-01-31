@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileName string, expectedSrtmLatitude, expectedSrtmLongitude float64) {
@@ -60,7 +62,10 @@ func TestGetElevation(t *testing.T) {
 func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
 	srtm, _ := NewSrtm()
 	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(40.75, -111.883333)
-	srtmData := newSrtmData(".")
+	storage, err := NewLocalFileSrtmStorage("")
+	assert.Nil(t, err)
+	srtmData, err := newSrtmData(storage)
+	assert.Nil(t, err)
 	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
 	srtm3url := srtmData.GetSrtm3Url(srtmFileName)
 	if len(srtm1url.Url) == 0 || len(srtm3url.Url) == 0 {
@@ -71,7 +76,10 @@ func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
 func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
 	srtm, _ := NewSrtm()
 	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(45.2775, 13.726111)
-	srtmData := newSrtmData(".")
+	storage, err := NewLocalFileSrtmStorage("")
+	assert.Nil(t, err)
+	srtmData, err := newSrtmData(storage)
+	assert.Nil(t, err)
 	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
 	srtm3url := srtmData.GetSrtm3Url(srtmFileName)
 	if !(srtm3url != nil && len(srtm3url.Url) > 0 && srtm1url == nil) {
