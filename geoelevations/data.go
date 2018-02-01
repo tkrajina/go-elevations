@@ -26,18 +26,22 @@ func newSrtmData(client *http.Client, storage SrtmLocalStorage) (*SrtmData, erro
 	fn := "urls.json"
 
 	bytes, err := storage.LoadFile(fn)
-	if storage.IsNotExists(err) {
-		srtmData, err := LoadSrtmData(client)
-		if err != nil {
-			return nil, err
-		}
-		b, err := json.Marshal(srtmData)
-		if err != nil {
-			return nil, err
-		}
-		bytes = b
+	if err != nil {
+		if storage.IsNotExists(err) {
+			srtmData, err := LoadSrtmData(client)
+			if err != nil {
+				return nil, err
+			}
+			b, err := json.Marshal(srtmData)
+			if err != nil {
+				return nil, err
+			}
+			bytes = b
 
-		if err := storage.SaveFile(fn, bytes); err != nil {
+			if err := storage.SaveFile(fn, bytes); err != nil {
+				return nil, err
+			}
+		} else {
 			return nil, err
 		}
 	}
