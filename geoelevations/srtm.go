@@ -57,9 +57,9 @@ func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64)
 	srtmFile, ok := self.cache[srtmFileName]
 	if !ok {
 		srtmFile = newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
-		srtmFileUrl := self.srtmData.GetBestSrtmUrl(srtmFileName)
+		baseUrl, srtmFileUrl := self.srtmData.GetBestSrtmUrl(srtmFileName)
 		if srtmFileUrl != nil {
-			srtmFile = newSrtmFile(srtmFileName, srtmFileUrl.Url, srtmLatitude, srtmLongitude)
+			srtmFile = newSrtmFile(srtmFileName, baseUrl+srtmFileUrl.Url, srtmLatitude, srtmLongitude)
 		}
 		self.cache[srtmFileName] = srtmFile
 	}
@@ -239,12 +239,14 @@ func LoadSrtmData() (*SrtmData, error) {
 	result := new(SrtmData)
 
 	var err error
-	result.Srtm1, err = getLinksFromUrl(SRTM_BASE_URL+SRTM1_URL, 0)
+	result.Srtm1BaseUrl = SRTM_BASE_URL + SRTM1_URL
+	result.Srtm1, err = getLinksFromUrl(result.Srtm1BaseUrl, result.Srtm1BaseUrl, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	result.Srtm3, err = getLinksFromUrl(SRTM_BASE_URL+SRTM3_URL, 0)
+	result.Srtm3BaseUrl = SRTM_BASE_URL + SRTM3_URL
+	result.Srtm3, err = getLinksFromUrl(result.Srtm3BaseUrl, result.Srtm3BaseUrl, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +254,7 @@ func LoadSrtmData() (*SrtmData, error) {
 	return result, nil
 }
 
-func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {
+func getLinksFromUrl(baseUrl, url string, depth int) ([]SrtmUrl, error) {
 	if depth >= 2 {
 		return []SrtmUrl{}, nil
 	}
@@ -271,11 +273,12 @@ func getLinksFromUrl(url string, depth int) ([]SrtmUrl, error) {
 			parts := strings.Split(tmpUrl, "/")
 			name := parts[len(parts)-1]
 			name = strings.Replace(name, ".hgt.zip", "", -1)
-			srtmUrl := SrtmUrl{Name: name, Url: fmt.Sprintf("%s/%s", url, tmpUrl)}
+			u := strings.Replace(fmt.Sprintf("%s/%s", url, tmpUrl), baseUrl, "", 1)
+			srtmUrl := SrtmUrl{Name: name, Url: u}
 			result = append(result, srtmUrl)
 			log.Printf("> %s/%s -> %s\n", url, tmpUrl, tmpUrl)
 		} else if len(urlLowercase) > 0 && urlLowercase[0] != '/' && !strings.HasPrefix(urlLowercase, "http") && !strings.HasSuffix(urlLowercase, ".jpg") {
-			newLinks, err := getLinksFromUrl(fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
+			newLinks, err := getLinksFromUrl(baseUrl, fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
 			if err != nil {
 				return nil, err
 			}

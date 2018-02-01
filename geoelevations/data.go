@@ -7,14 +7,18 @@ import (
 
 type SrtmUrl struct {
 	// FileName without extension
-	Name string
-	Url  string
+	Name string `json:"n"`
+	Url  string `json:"u"`
+
+	baseUrl string `json:"-"`
 }
 
 // Info (to be (se)serialized) about all the SRTM files and their URLs
 type SrtmData struct {
-	Srtm1 []SrtmUrl
-	Srtm3 []SrtmUrl
+	Srtm1BaseUrl string    `json:"srtm1_base_url"`
+	Srtm1        []SrtmUrl `json:"srtm1"`
+	Srtm3BaseUrl string    `json:"srtm3_base_url"`
+	Srtm3        []SrtmUrl `json:"srtm2"`
 }
 
 func newSrtmData(storage SrtmLocalStorage) (*SrtmData, error) {
@@ -45,29 +49,29 @@ func newSrtmData(storage SrtmLocalStorage) (*SrtmData, error) {
 	return srtmData, nil
 }
 
-func (self *SrtmData) GetBestSrtmUrl(fileName string) *SrtmUrl {
-	srtm3Url := self.GetSrtm3Url(fileName)
+func (self *SrtmData) GetBestSrtmUrl(fileName string) (string, *SrtmUrl) {
+	baseUrl, srtm3Url := self.GetSrtm3Url(fileName)
 	if srtm3Url != nil {
-		return srtm3Url
+		return baseUrl, srtm3Url
 	}
 
 	return self.GetSrtm1Url(fileName)
 }
 
-func (self *SrtmData) GetSrtm1Url(fileName string) *SrtmUrl {
+func (self *SrtmData) GetSrtm1Url(fileName string) (string, *SrtmUrl) {
 	for _, srtmUrl := range self.Srtm1 {
 		if strings.HasPrefix(fileName, srtmUrl.Name) {
-			return &srtmUrl
+			return self.Srtm1BaseUrl, &srtmUrl
 		}
 	}
-	return nil
+	return "", nil
 }
 
-func (self *SrtmData) GetSrtm3Url(fileName string) *SrtmUrl {
+func (self *SrtmData) GetSrtm3Url(fileName string) (string, *SrtmUrl) {
 	for _, srtmUrl := range self.Srtm3 {
 		if strings.HasPrefix(srtmUrl.Name, fileName) {
-			return &srtmUrl
+			return self.Srtm3BaseUrl, &srtmUrl
 		}
 	}
-	return nil
+	return "", nil
 }

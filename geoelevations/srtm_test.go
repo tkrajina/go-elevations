@@ -66,11 +66,13 @@ func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
 	assert.Nil(t, err)
 	srtmData, err := newSrtmData(storage)
 	assert.Nil(t, err)
-	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
-	srtm3url := srtmData.GetSrtm3Url(srtmFileName)
-	if len(srtm1url.Url) == 0 || len(srtm3url.Url) == 0 {
-		t.Error("USA should have both srtm1 and srtm3 urls")
-	}
+	baseUrl1, srtm1url := srtmData.GetSrtm1Url(srtmFileName)
+	baseUrl3, srtm3url := srtmData.GetSrtm3Url(srtmFileName)
+	// USA should have both srtm1 and srtm3 urls
+	assert.NotEmpty(t, baseUrl1)
+	assert.NotEmpty(t, srtm1url)
+	assert.NotEmpty(t, baseUrl3)
+	assert.NotEmpty(t, srtm3url)
 }
 
 func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
@@ -80,8 +82,8 @@ func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
 	assert.Nil(t, err)
 	srtmData, err := newSrtmData(storage)
 	assert.Nil(t, err)
-	srtm1url := srtmData.GetSrtm1Url(srtmFileName)
-	srtm3url := srtmData.GetSrtm3Url(srtmFileName)
+	_, srtm1url := srtmData.GetSrtm1Url(srtmFileName)
+	_, srtm3url := srtmData.GetSrtm3Url(srtmFileName)
 	if !(srtm3url != nil && len(srtm3url.Url) > 0 && srtm1url == nil) {
 		t.Error("Europe should have both srtm1 and srtm3 urls")
 	}
