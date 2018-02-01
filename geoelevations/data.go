@@ -2,6 +2,7 @@ package geoelevations
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
 )
 
@@ -21,12 +22,12 @@ type SrtmData struct {
 	Srtm3        []SrtmUrl `json:"srtm2"`
 }
 
-func newSrtmData(storage SrtmLocalStorage) (*SrtmData, error) {
+func newSrtmData(client *http.Client, storage SrtmLocalStorage) (*SrtmData, error) {
 	fn := "urls.json"
 
 	bytes, err := storage.LoadFile(fn)
 	if storage.IsNotExists(err) {
-		srtmData, err := LoadSrtmData()
+		srtmData, err := LoadSrtmData(client)
 		if err != nil {
 			return nil, err
 		}

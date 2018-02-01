@@ -10,7 +10,7 @@ import (
 )
 
 func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileName string, expectedSrtmLatitude, expectedSrtmLongitude float64) {
-	srtm, _ := NewSrtm()
+	srtm, _ := NewSrtm(http.DefaultClient)
 	fileName, srtmLatitude, srtmLongitude := srtm.getSrtmFileNameAndCoordinates(latitude, longitude)
 	log.Printf("Checking %s", fileName)
 	if fileName != expectedFileName {
@@ -41,7 +41,7 @@ func TestFindSrtmFileName(t *testing.T) {
 }
 
 func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
-	srtm, _ := NewSrtm()
+	srtm, _ := NewSrtm(http.DefaultClient)
 	elevation, err := srtm.GetElevation(http.DefaultClient, latitude, longitude)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
@@ -60,11 +60,11 @@ func TestGetElevation(t *testing.T) {
 }
 
 func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
-	srtm, _ := NewSrtm()
+	srtm, _ := NewSrtm(http.DefaultClient)
 	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(40.75, -111.883333)
 	storage, err := NewLocalFileSrtmStorage("")
 	assert.Nil(t, err)
-	srtmData, err := newSrtmData(storage)
+	srtmData, err := newSrtmData(http.DefaultClient, storage)
 	assert.Nil(t, err)
 	baseUrl1, srtm1url := srtmData.GetSrtm1Url(srtmFileName)
 	baseUrl3, srtm3url := srtmData.GetSrtm3Url(srtmFileName)
@@ -76,11 +76,11 @@ func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
 }
 
 func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
-	srtm, _ := NewSrtm()
+	srtm, _ := NewSrtm(http.DefaultClient)
 	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(45.2775, 13.726111)
 	storage, err := NewLocalFileSrtmStorage("")
 	assert.Nil(t, err)
-	srtmData, err := newSrtmData(storage)
+	srtmData, err := newSrtmData(http.DefaultClient, storage)
 	assert.Nil(t, err)
 	_, srtm1url := srtmData.GetSrtm1Url(srtmFileName)
 	_, srtm3url := srtmData.GetSrtm3Url(srtmFileName)

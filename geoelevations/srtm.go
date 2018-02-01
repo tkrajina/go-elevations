@@ -25,12 +25,12 @@ type Srtm struct {
 	storage  SrtmLocalStorage
 }
 
-func NewSrtm() (*Srtm, error) {
-	return NewSrtmWithCustomCacheDir("")
+func NewSrtm(client *http.Client) (*Srtm, error) {
+	return NewSrtmWithCustomCacheDir(client, "")
 }
 
-func NewSrtmWithCustomStorage(storage SrtmLocalStorage) (*Srtm, error) {
-	srtmData, err := newSrtmData(storage)
+func NewSrtmWithCustomStorage(client *http.Client, storage SrtmLocalStorage) (*Srtm, error) {
+	srtmData, err := newSrtmData(client, storage)
 	if err != nil {
 		return nil, err
 	}
@@ -42,12 +42,12 @@ func NewSrtmWithCustomStorage(storage SrtmLocalStorage) (*Srtm, error) {
 	}, nil
 }
 
-func NewSrtmWithCustomCacheDir(cacheDirectory string) (*Srtm, error) {
+func NewSrtmWithCustomCacheDir(client *http.Client, cacheDirectory string) (*Srtm, error) {
 	storage, err := NewLocalFileSrtmStorage(cacheDirectory)
 	if err != nil {
 		return nil, err
 	}
-	return NewSrtmWithCustomStorage(storage)
+	return NewSrtmWithCustomStorage(client, storage)
 }
 
 func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64) (float64, error) {
@@ -235,18 +235,18 @@ func (self SrtmFile) getRowAndColumn(latitude, longitude float64) (int, int) {
 // Misc util functions
 // ----------------------------------------------------------------------------------------------------
 
-func LoadSrtmData() (*SrtmData, error) {
+func LoadSrtmData(client *http.Client) (*SrtmData, error) {
 	result := new(SrtmData)
 
 	var err error
 	result.Srtm1BaseUrl = SRTM_BASE_URL + SRTM1_URL
-	result.Srtm1, err = getLinksFromUrl(result.Srtm1BaseUrl, result.Srtm1BaseUrl, 0)
+	result.Srtm1, err = getLinksFromUrl(client, result.Srtm1BaseUrl, result.Srtm1BaseUrl, 0)
 	if err != nil {
 		return nil, err
 	}
 
 	result.Srtm3BaseUrl = SRTM_BASE_URL + SRTM3_URL
-	result.Srtm3, err = getLinksFromUrl(result.Srtm3BaseUrl, result.Srtm3BaseUrl, 0)
+	result.Srtm3, err = getLinksFromUrl(client, result.Srtm3BaseUrl, result.Srtm3BaseUrl, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -254,12 +254,12 @@ func LoadSrtmData() (*SrtmData, error) {
 	return result, nil
 }
 
-func getLinksFromUrl(baseUrl, url string, depth int) ([]SrtmUrl, error) {
+func getLinksFromUrl(client *http.Client, baseUrl, url string, depth int) ([]SrtmUrl, error) {
 	if depth >= 2 {
 		return []SrtmUrl{}, nil
 	}
 
-	resp, err := http.Get(url)
+	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,7 @@ func getLinksFromUrl(baseUrl, url string, depth int) ([]SrtmUrl, error) {
 			result = append(result, srtmUrl)
 			log.Printf("> %s/%s -> %s\n", url, tmpUrl, tmpUrl)
 		} else if len(urlLowercase) > 0 && urlLowercase[0] != '/' && !strings.HasPrefix(urlLowercase, "http") && !strings.HasSuffix(urlLowercase, ".jpg") {
-			newLinks, err := getLinksFromUrl(baseUrl, fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
+			newLinks, err := getLinksFromUrl(client, baseUrl, fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
 			if err != nil {
 				return nil, err
 			}
