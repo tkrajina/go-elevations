@@ -33,14 +33,6 @@ go-elevations is a parser for "The Shuttle Radar Topography Mission" data.
 
 It is based on the existing library for python [srtm.py](https://github.com/tkrajina/srtm.py)
 
-## Usage
-
-http.DefaultClient
-
-## License
-
-This library is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
-
 ## License
 
 This library is licensed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
