@@ -54,7 +54,6 @@ func unzipBytes(byts []byte) ([]byte, error) {
 	// Iterate through the files in the archive,
 	// printing some of their contents.
 	for _, f := range r.File {
-		log.Printf("Contents of %s:\n", f.Name)
 		rc, err := f.Open()
 		if err != nil {
 			log.Printf("Error reading %s: %s", f.Name, err.Error())
