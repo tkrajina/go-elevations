@@ -13,9 +13,7 @@ import (
 )
 
 const (
-	SRTM_BASE_URL = "http://dds.cr.usgs.gov/srtm"
-	SRTM1_URL     = "/version2_1/SRTM1/"
-	SRTM3_URL     = "/version2_1/SRTM3/"
+	SRTM_BASE_URL = "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/"
 )
 
 type Srtm struct {
@@ -239,13 +237,7 @@ func LoadSrtmData(client *http.Client) (*SrtmData, error) {
 	result := new(SrtmData)
 
 	var err error
-	result.Srtm1BaseUrl = SRTM_BASE_URL + SRTM1_URL
-	result.Srtm1, err = getLinksFromUrl(client, result.Srtm1BaseUrl, result.Srtm1BaseUrl, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	result.Srtm3BaseUrl = SRTM_BASE_URL + SRTM3_URL
+	result.Srtm3BaseUrl = SRTM_BASE_URL
 	result.Srtm3, err = getLinksFromUrl(client, result.Srtm3BaseUrl, result.Srtm3BaseUrl, 0)
 	if err != nil {
 		return nil, err

@@ -16,8 +16,6 @@ type SrtmUrl struct {
 
 // Info (to be (se)serialized) about all the SRTM files and their URLs
 type SrtmData struct {
-	Srtm1BaseUrl string    `json:"srtm1_base_url"`
-	Srtm1        []SrtmUrl `json:"srtm1"`
 	Srtm3BaseUrl string    `json:"srtm3_base_url"`
 	Srtm3        []SrtmUrl `json:"srtm2"`
 }
@@ -55,21 +53,7 @@ func newSrtmData(client *http.Client, storage SrtmLocalStorage) (*SrtmData, erro
 }
 
 func (self *SrtmData) GetBestSrtmUrl(fileName string) (string, *SrtmUrl) {
-	baseUrl, srtm3Url := self.GetSrtm3Url(fileName)
-	if srtm3Url != nil {
-		return baseUrl, srtm3Url
-	}
-
-	return self.GetSrtm1Url(fileName)
-}
-
-func (self *SrtmData) GetSrtm1Url(fileName string) (string, *SrtmUrl) {
-	for _, srtmUrl := range self.Srtm1 {
-		if strings.HasPrefix(fileName, srtmUrl.Name) {
-			return self.Srtm1BaseUrl, &srtmUrl
-		}
-	}
-	return "", nil
+	return self.GetSrtm3Url(fileName)
 }
 
 func (self *SrtmData) GetSrtm3Url(fileName string) (string, *SrtmUrl) {
