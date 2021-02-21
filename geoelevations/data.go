@@ -3,21 +3,18 @@ package geoelevations
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 )
 
 type SrtmUrl struct {
 	// FileName without extension
 	Name string `json:"n"`
 	Url  string `json:"u"`
-
-	baseUrl string `json:"-"`
 }
 
 // Info (to be (se)serialized) about all the SRTM files and their URLs
 type SrtmData struct {
-	Srtm3BaseUrl string    `json:"srtm3_base_url"`
-	Srtm3        []SrtmUrl `json:"srtm2"`
+	BaseUrl string            `json:"baseUrl"`
+	Files   map[string]string `json:"files"`
 }
 
 func newSrtmData(client *http.Client, storage SrtmLocalStorage) (*SrtmData, error) {
@@ -57,10 +54,13 @@ func (self *SrtmData) GetBestSrtmUrl(fileName string) (string, *SrtmUrl) {
 }
 
 func (self *SrtmData) GetSrtm3Url(fileName string) (string, *SrtmUrl) {
-	for _, srtmUrl := range self.Srtm3 {
-		if strings.HasPrefix(srtmUrl.Name, fileName) {
-			return self.Srtm3BaseUrl, &srtmUrl
-		}
-	}
 	return "", nil
+	/*
+		for _, srtmUrl := range self.Srtm3 {
+			if strings.HasPrefix(srtmUrl.Name, fileName) {
+				return self.SRTMBaseUrl, &srtmUrl
+			}
+		}
+		return "", nil
+	*/
 }

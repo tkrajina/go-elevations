@@ -242,8 +242,8 @@ func LoadSrtmData(client *http.Client) (*SrtmData, error) {
 	}
 	fmt.Printf("retrieved %d urls\n", len(urls))
 	return &SrtmData{
-		Srtm3BaseUrl: SRTM_BASE_URL,
-		Srtm3:        urls,
+		BaseUrl: SRTM_BASE_URL,
+		// TODO
 	}, nil
 }
 
