@@ -10,10 +10,12 @@ import (
 	"math"
 	"net/http"
 	"strings"
+
+	"github.com/PuerkitoBio/goquery"
 )
 
 const (
-	SRTM_BASE_URL = "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/"
+	SRTM_BASE_URL = "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/"
 )
 
 type Srtm struct {
@@ -234,16 +236,61 @@ func (self SrtmFile) getRowAndColumn(latitude, longitude float64) (int, int) {
 // ----------------------------------------------------------------------------------------------------
 
 func LoadSrtmData(client *http.Client) (*SrtmData, error) {
-	result := new(SrtmData)
-
-	var err error
-	result.Srtm3BaseUrl = SRTM_BASE_URL
-	result.Srtm3, err = getLinksFromUrl(client, result.Srtm3BaseUrl, result.Srtm3BaseUrl, 0)
+	urls, err := loadSrtmData(client, SRTM_BASE_URL, map[string]bool{}, 0)
 	if err != nil {
 		return nil, err
 	}
+	fmt.Printf("retrieved %d urls\n", len(urls))
+	return &SrtmData{
+		Srtm3BaseUrl: SRTM_BASE_URL,
+		Srtm3:        urls,
+	}, nil
+}
 
-	return result, nil
+func loadSrtmData(client *http.Client, url string, visited map[string]bool, depth int) (urls []SrtmUrl, err error) {
+	if _, found := visited[url]; found {
+		//fmt.Println("already visited", url)
+		return
+	}
+	if depth > 3 {
+		//fmt.Println("depth", depth)
+		return
+	}
+	//fmt.Println("Parsing", url)
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	visited[url] = true
+
+	d, err := goquery.NewDocumentFromReader(resp.Body)
+
+	var finalErr error
+	d.Find("a").Each(func(i int, s *goquery.Selection) {
+		href, _ := s.Attr("href")
+		if strings.HasSuffix(href, ".hgt.zip") {
+			//fmt.Println(s.Text(), href)
+			// Example: http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/N12W004.SRTMGL3.hgt.zip
+			parts := strings.Split(href, "/")
+			name := strings.Split(parts[len(parts)-1], ".")[0]
+			//fmt.Println(name)
+			urls = append(urls, SrtmUrl{
+				Name: name,
+				Url:  href,
+			})
+		} else if strings.Contains(strings.ToLower(href), strings.ToLower(url)) {
+			var u []SrtmUrl
+			u, err = loadSrtmData(client, href, visited, depth+1)
+			if err != nil {
+				finalErr = err
+			}
+			urls = append(urls, u...)
+		}
+	})
+
+	err = finalErr
+	return
 }
 
 func getLinksFromUrl(client *http.Client, baseUrl, url string, depth int) ([]SrtmUrl, error) {
