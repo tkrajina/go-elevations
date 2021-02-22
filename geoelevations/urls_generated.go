@@ -1,8 +1,10 @@
 package geoelevations
 
 var SRTMGL3 = SrtmData{
-	BaseURL: "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/",
-	Files: map[string]string{
+	name:        "SRTMGL3",
+	description: "The default 3-arc-second data for the world obtained by averaging the 1-arc-second raw data.",
+	baseURL:     "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/",
+	files: map[string]string{
 		"N00E006": "N00E006.SRTMGL3.hgt.zip",
 		"N00E009": "N00E009.SRTMGL3.hgt.zip",
 		"N00E010": "N00E010.SRTMGL3.hgt.zip",
@@ -14303,8 +14305,10 @@ var SRTMGL3 = SrtmData{
 	},
 }
 var SRTMGL3S = SrtmData{
-	BaseURL: "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3S.003/2000.02.11/",
-	Files: map[string]string{
+	name:        "SRTMGL3S",
+	description: "The sampled 3-arc-second data for the whole world obtained by getting the middle 1-arc-second raw data sample out of a 3×3 matrix.",
+	baseURL:     "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3S.003/2000.02.11/",
+	files: map[string]string{
 		"N00E006": "N00E006.SRTMGL3S.hgt.zip",
 		"N00E009": "N00E009.SRTMGL3S.hgt.zip",
 		"N00E010": "N00E010.SRTMGL3S.hgt.zip",
@@ -28588,8 +28592,10 @@ var SRTMGL3S = SrtmData{
 	},
 }
 var SRTMGL1 = SrtmData{
-	BaseURL: "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/",
-	Files: map[string]string{
+	name:        "SRTMGL1",
+	description: "The 1-arc-second data for whole world (NEW!).",
+	baseURL:     "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/",
+	files: map[string]string{
 		"N00E006": "N00E006.SRTMGL1.hgt.zip",
 		"N00E009": "N00E009.SRTMGL1.hgt.zip",
 		"N00E010": "N00E010.SRTMGL1.hgt.zip",

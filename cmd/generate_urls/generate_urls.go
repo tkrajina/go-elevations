@@ -59,9 +59,13 @@ func main() {
 		f.WriteString("\n")
 		f.WriteString(`var ` + d.name + ` = SrtmData{
 `)
-		f.WriteString(`	BaseURL: "` + d.baseUrl + `",
+		f.WriteString(`	name: "` + d.name + `",
 `)
-		f.WriteString(`	Files:   map[string]string{
+		f.WriteString(`	description: "` + d.description + `",
+`)
+		f.WriteString(`	baseURL: "` + d.baseUrl + `",
+`)
+		f.WriteString(`	files:   map[string]string{
 `)
 		for _, urlKey := range urlKeys {
 			f.WriteString(`"` + urlKey + `": "` + urls[urlKey] + `",
