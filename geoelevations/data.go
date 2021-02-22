@@ -7,9 +7,9 @@ type SrtmData struct {
 }
 
 func (sd SrtmData) getFileURL(fn string) (string, bool) {
-	path, found := urls.Files[fn]
+	path, found := sd.Files[fn]
 	if !found {
 		return "", false
 	}
-	return urls.BaseURL + path, true
+	return sd.BaseURL + path, true
 }

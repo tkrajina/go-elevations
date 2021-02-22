@@ -30,7 +30,7 @@ func NewSrtmWithCustomStorage(client *http.Client, storage SrtmLocalStorage) (*S
 	return &Srtm{
 		cache:    make(map[string]*SrtmFile),
 		storage:  storage,
-		srtmData: *&urls,
+		srtmData: *&SRTMGL3S,
 	}, nil
 }
 
@@ -48,7 +48,7 @@ func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64,
 
 	_, found := self.cache[srtmFileName]
 	if !found {
-		srtmURL, found := urls.getFileURL(srtmFileName)
+		srtmURL, found := SRTMGL3S.getFileURL(srtmFileName)
 		if !found {
 			return 0, fmt.Errorf("no SRTM url for (%f,%f) (%s)", latitude, longitude, srtmFileName)
 		}

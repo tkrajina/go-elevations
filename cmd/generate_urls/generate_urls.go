@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -35,10 +36,15 @@ func main() {
 	panicIfErr(err)
 	f.WriteString("package geoelevations\n")
 
+	jsn := map[string]interface{}{}
 	for _, d := range data {
 		fmt.Println("Generating urls from", d.baseUrl, d.description)
 		urls, err := fundURLs(http.DefaultClient, d.baseUrl, map[string]bool{}, 2)
 		panicIfErr(err)
+
+		for k, v := range urls {
+			urls[k] = strings.Replace(strings.ReplaceAll(v, "http:", "https:"), d.baseUrl, "", 1)
+		}
 
 		if len(urls) == 0 {
 			panic("nor urls for " + d.baseUrl)
@@ -58,14 +64,29 @@ func main() {
 		f.WriteString(`	Files:   map[string]string{
 `)
 		for _, urlKey := range urlKeys {
-			f.WriteString(`"` + urlKey + `": "` + strings.Replace(strings.ReplaceAll(urls[urlKey], "http:", "https:"), d.baseUrl, "", 1) + `",
+			f.WriteString(`"` + urlKey + `": "` + urls[urlKey] + `",
 `)
 		}
 		f.WriteString(`},
 }`)
+
+		jsn[d.name] = map[string]interface{}{
+			"baseUrl":     d.baseUrl,
+			"description": d.description,
+			"files":       urls,
+		}
 	}
 
 	panicIfErr(f.Close())
+
+	byts, err := json.MarshalIndent(jsn, "", "   ")
+	panicIfErr(err)
+
+	jsnFile, err := os.Create("urls/urls.json")
+	panicIfErr(err)
+
+	jsnFile.Write(byts)
+	panicIfErr(jsnFile.Close())
 }
 
 func fundURLs(client *http.Client, url string, visited map[string]bool, depth int) (urls map[string]string, err error) {
