@@ -44,6 +44,7 @@ const (
 
 func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
 	srtm, _ := NewSrtm()
+	srtm.SetAuth(username, password)
 	elevation, err := srtm.GetElevation(latitude, longitude)
 	fmt.Printf("Elevation for (%f, %f) is %f\n", latitude, longitude, elevation)
 	if err != nil {

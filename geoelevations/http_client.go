@@ -3,6 +3,7 @@ package geoelevations
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 )
@@ -13,6 +14,9 @@ type httpClient struct {
 }
 
 func newHTTPClient(username, password string) (*httpClient, error) {
+	if username == "" || password == "" {
+		return nil, fmt.Errorf("usernam or password not set")
+	}
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
@@ -47,7 +51,7 @@ func (c *httpClient) downloadSrtmURL(url string) ([]byte, error) {
 
 	if resp.StatusCode == 302 {
 		loc := resp.Header["Location"][0]
-		fmt.Println("Redirecting to:", loc)
+		log.Print("Redirecting to:", loc)
 
 		authReq, err := http.NewRequest(http.MethodGet, loc, nil)
 		if err != nil {
@@ -61,10 +65,10 @@ func (c *httpClient) downloadSrtmURL(url string) ([]byte, error) {
 			return nil, err
 		}
 
-		fmt.Println("Auth resp status:", authResp.Status)
+		log.Print("Auth resp status:", authResp.Status)
 
 		codeLoc := authResp.Header["Location"][0]
-		fmt.Println("Redirect to:", codeLoc)
+		log.Print("Redirect to:", codeLoc)
 
 		codeReq, err := http.NewRequest(http.MethodGet, codeLoc, nil)
 		if err != nil {
@@ -76,10 +80,10 @@ func (c *httpClient) downloadSrtmURL(url string) ([]byte, error) {
 			return nil, err
 		}
 
-		fmt.Println("Code resp status: ", codeResp.Status)
+		log.Print("Code resp status: ", codeResp.Status)
 
 		lastRedirectLoc := codeResp.Header["Location"][0]
-		fmt.Println("Last redirect:", lastRedirectLoc)
+		log.Print("Last redirect:", lastRedirectLoc)
 	}
 
 	req, err = http.NewRequest(http.MethodGet, url, nil)
