@@ -5,8 +5,6 @@ import (
 	"log"
 	"net/http"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileName string, expectedSrtmLatitude, expectedSrtmLongitude float64) {
@@ -40,9 +38,15 @@ func TestFindSrtmFileName(t *testing.T) {
 	checkSrtmFileName(t, 0, 0, "N00E000", 0, 0)
 }
 
+const (
+	username = ""
+	password = ""
+)
+
 func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
 	srtm, _ := NewSrtm(http.DefaultClient)
-	elevation, err := srtm.GetElevation(http.DefaultClient, latitude, longitude)
+	elevation, err := srtm.GetElevation(http.DefaultClient, latitude, longitude, username, password)
+	fmt.Printf("Elevation for (%f, %f) is %f\n", latitude, longitude, elevation)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())
 		return
@@ -57,30 +61,4 @@ func TestGetElevation(t *testing.T) {
 	checkElevation(t, -26.4, 146.25, 301)
 	checkElevation(t, -12.1, -77.016667, 133)
 	checkElevation(t, 40.75, -111.883333, 1298)
-}
-
-func TestSrtm1AndSrtm3ForUSA(t *testing.T) {
-	srtm, _ := NewSrtm(http.DefaultClient)
-	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(40.75, -111.883333)
-	storage, err := NewLocalFileSrtmStorage("")
-	assert.Nil(t, err)
-	srtmData, err := newSrtmData(http.DefaultClient, storage)
-	assert.Nil(t, err)
-	baseUrl3, srtm3url := srtmData.GetSrtm3Url(srtmFileName)
-	// USA should have both srtm1 and srtm3 urls
-	assert.NotEmpty(t, baseUrl3)
-	assert.NotEmpty(t, srtm3url)
-}
-
-func TestSrtm1AndSrtm3ForEurope(t *testing.T) {
-	srtm, _ := NewSrtm(http.DefaultClient)
-	srtmFileName, _, _ := srtm.getSrtmFileNameAndCoordinates(45.2775, 13.726111)
-	storage, err := NewLocalFileSrtmStorage("")
-	assert.Nil(t, err)
-	srtmData, err := newSrtmData(http.DefaultClient, storage)
-	assert.Nil(t, err)
-	_, srtm3url := srtmData.GetSrtm3Url(srtmFileName)
-	if !(srtm3url != nil && len(srtm3url.Url) > 0) {
-		t.Error("Europe should have both srtm1 and srtm3 urls")
-	}
 }

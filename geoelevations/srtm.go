@@ -5,13 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
 	"strings"
-
-	"github.com/PuerkitoBio/goquery"
 )
 
 const (
@@ -30,15 +27,10 @@ func NewSrtm(client *http.Client) (*Srtm, error) {
 }
 
 func NewSrtmWithCustomStorage(client *http.Client, storage SrtmLocalStorage) (*Srtm, error) {
-	srtmData, err := newSrtmData(client, storage)
-	if err != nil {
-		return nil, err
-	}
-
 	return &Srtm{
 		cache:    make(map[string]*SrtmFile),
 		storage:  storage,
-		srtmData: *srtmData,
+		srtmData: *&urls,
 	}, nil
 }
 
@@ -50,21 +42,20 @@ func NewSrtmWithCustomCacheDir(client *http.Client, cacheDirectory string) (*Srt
 	return NewSrtmWithCustomStorage(client, storage)
 }
 
-func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64) (float64, error) {
+func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64, username, password string) (float64, error) {
 	srtmFileName, srtmLatitude, srtmLongitude := self.getSrtmFileNameAndCoordinates(latitude, longitude)
 	//log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
 
-	srtmFile, ok := self.cache[srtmFileName]
-	if !ok {
-		srtmFile = newSrtmFile(srtmFileName, "", srtmLatitude, srtmLongitude)
-		baseUrl, srtmFileUrl := self.srtmData.GetBestSrtmUrl(srtmFileName)
-		if srtmFileUrl != nil {
-			srtmFile = newSrtmFile(srtmFileName, baseUrl+srtmFileUrl.Url, srtmLatitude, srtmLongitude)
+	_, found := self.cache[srtmFileName]
+	if !found {
+		srtmURL, found := urls.getFileURL(srtmFileName)
+		if !found {
+			return 0, fmt.Errorf("no SRTM url for (%f,%f) (%s)", latitude, longitude, srtmFileName)
 		}
-		self.cache[srtmFileName] = srtmFile
+		self.cache[srtmFileName] = newSrtmFile(srtmFileName, srtmURL, srtmLatitude, srtmLongitude)
 	}
 
-	return srtmFile.getElevation(client, self.storage, latitude, longitude)
+	return self.cache[srtmFileName].getElevation(client, self.storage, latitude, longitude, username, password)
 }
 
 func (self *Srtm) getSrtmFileNameAndCoordinates(latitude, longitude float64) (string, float64, float64) {
@@ -112,7 +103,7 @@ func newSrtmFile(name, fileUrl string, latitude, longitude float64) *SrtmFile {
 	return &result
 }
 
-func (self *SrtmFile) loadContents(client *http.Client, storage SrtmLocalStorage) error {
+func (self *SrtmFile) loadContents(client *http.Client, username, password string, storage SrtmLocalStorage) error {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		return nil
 	}
@@ -123,21 +114,10 @@ func (self *SrtmFile) loadContents(client *http.Client, storage SrtmLocalStorage
 	if err != nil {
 		if storage.IsNotExists(err) {
 			log.Printf("File %s not retrieved => retrieving: %s", fileName, self.fileUrl)
-			req, err := http.NewRequest(http.MethodGet, self.fileUrl, nil)
+			responseBytes, err := downloadSrtmURL(self.fileUrl, username, password)
 			if err != nil {
 				return err
 			}
-			response, err := client.Do(req)
-			if err != nil {
-				log.Printf("Error retrieving file: %s", err.Error())
-				return err
-			}
-
-			responseBytes, err := ioutil.ReadAll(response.Body)
-			if err != nil {
-				return err
-			}
-			_ = response.Body.Close()
 
 			if err := storage.SaveFile(fileName, responseBytes); err != nil {
 				return err
@@ -161,7 +141,7 @@ func (self *SrtmFile) loadContents(client *http.Client, storage SrtmLocalStorage
 	return nil
 }
 
-func (self *SrtmFile) getElevation(client *http.Client, storage SrtmLocalStorage, latitude, longitude float64) (float64, error) {
+func (self *SrtmFile) getElevation(client *http.Client, storage SrtmLocalStorage, latitude, longitude float64, username, password string) (float64, error) {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		log.Printf("Invalid file %s", self.name)
 		return math.NaN(), nil
@@ -169,7 +149,7 @@ func (self *SrtmFile) getElevation(client *http.Client, storage SrtmLocalStorage
 
 	if len(self.contents) == 0 {
 		log.Println("load contents")
-		err := self.loadContents(client, storage)
+		err := self.loadContents(client, username, password, storage)
 		if err != nil {
 			return math.NaN(), err
 		}
@@ -234,100 +214,6 @@ func (self SrtmFile) getRowAndColumn(latitude, longitude float64) (int, int) {
 // ----------------------------------------------------------------------------------------------------
 // Misc util functions
 // ----------------------------------------------------------------------------------------------------
-
-func LoadSrtmData(client *http.Client) (*SrtmData, error) {
-	urls, err := loadSrtmData(client, SRTM_BASE_URL, map[string]bool{}, 0)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Printf("retrieved %d urls\n", len(urls))
-	return &SrtmData{
-		BaseUrl: SRTM_BASE_URL,
-		// TODO
-	}, nil
-}
-
-func loadSrtmData(client *http.Client, url string, visited map[string]bool, depth int) (urls []SrtmUrl, err error) {
-	if _, found := visited[url]; found {
-		//fmt.Println("already visited", url)
-		return
-	}
-	if depth > 3 {
-		//fmt.Println("depth", depth)
-		return
-	}
-	//fmt.Println("Parsing", url)
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	visited[url] = true
-
-	d, err := goquery.NewDocumentFromReader(resp.Body)
-
-	var finalErr error
-	d.Find("a").Each(func(i int, s *goquery.Selection) {
-		href, _ := s.Attr("href")
-		if strings.HasSuffix(href, ".hgt.zip") {
-			//fmt.Println(s.Text(), href)
-			// Example: http://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/N12W004.SRTMGL3.hgt.zip
-			parts := strings.Split(href, "/")
-			name := strings.Split(parts[len(parts)-1], ".")[0]
-			//fmt.Println(name)
-			urls = append(urls, SrtmUrl{
-				Name: name,
-				Url:  href,
-			})
-		} else if strings.Contains(strings.ToLower(href), strings.ToLower(url)) {
-			var u []SrtmUrl
-			u, err = loadSrtmData(client, href, visited, depth+1)
-			if err != nil {
-				finalErr = err
-			}
-			urls = append(urls, u...)
-		}
-	})
-
-	err = finalErr
-	return
-}
-
-func getLinksFromUrl(client *http.Client, baseUrl, url string, depth int) ([]SrtmUrl, error) {
-	if depth >= 2 {
-		return []SrtmUrl{}, nil
-	}
-
-	resp, err := client.Get(url)
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]SrtmUrl, 0)
-
-	urls := getLinksFromHtmlDocument(resp.Body)
-	for _, tmpUrl := range urls {
-		urlLowercase := strings.ToLower(tmpUrl)
-		if strings.HasSuffix(urlLowercase, ".hgt.zip") {
-			parts := strings.Split(tmpUrl, "/")
-			name := parts[len(parts)-1]
-			name = strings.Replace(name, ".hgt.zip", "", -1)
-			u := strings.Replace(fmt.Sprintf("%s/%s", url, tmpUrl), baseUrl, "", 1)
-			srtmUrl := SrtmUrl{Name: name, Url: u}
-			result = append(result, srtmUrl)
-			log.Printf("> %s/%s -> %s\n", url, tmpUrl, tmpUrl)
-		} else if len(urlLowercase) > 0 && urlLowercase[0] != '/' && !strings.HasPrefix(urlLowercase, "http") && !strings.HasSuffix(urlLowercase, ".jpg") {
-			newLinks, err := getLinksFromUrl(client, baseUrl, fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
-			if err != nil {
-				return nil, err
-			}
-			result = append(result, newLinks...)
-			log.Printf("> %s\n", tmpUrl)
-		}
-	}
-
-	return result, nil
-}
 
 func getLinksFromHtmlDocument(html io.ReadCloser) []string {
 	result := make([]string, 10)

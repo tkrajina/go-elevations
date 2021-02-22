@@ -1,7 +1,7 @@
 package geoelevations
 
 var urls = SrtmData{
-	BaseUrl: "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/", Files: map[string]string{
+	BaseURL: "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/", Files: map[string]string{
 		"N00E006": "N00E006.SRTMGL3.hgt.zip",
 		"N00E009": "N00E009.SRTMGL3.hgt.zip",
 		"N00E010": "N00E010.SRTMGL3.hgt.zip",
