@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 	"sort"
@@ -9,9 +10,19 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-const (
-	SRTM_BASE_URL = "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/"
-)
+var data = []struct {
+	name, description, baseUrl string
+}{
+	{"SRTMGL3", "The default 3-arc-second data for the world obtained by averaging the 1-arc-second raw data.", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3.003/2000.02.11/"},
+	{"SRTMGL3S", "The sampled 3-arc-second data for the whole world obtained by getting the middle 1-arc-second raw data sample out of a 3×3 matrix.", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3S.003/2000.02.11/"},
+	//{"SRTMGL3N", "The meta-data for the previous 2 data sets explaining the source of each data point.", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL3N.003/2000.02.11/"},
+	//{"SRTMGL30", "The 30-arc-second data for the whole world.", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL30.002/2000.02.11/"},
+	//{"SRTMSWBD", "The tiled-vector data of the world's coastlines.", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMSWBD.003/2000.02.11/"},
+	//{"SRTMUS1", "The 1-arc-second data for the United States.", "https://e4ftl01.cr.usgs.gov/SRTM/SRTMUS1.003/2000.02.11/"},
+	//{"SRTMUS1N", "The meta-data for the United States data set.", "https://e4ftl01.cr.usgs.gov/SRTM/SRTMUS1N.003/2000.02.11/"},
+	{"SRTMGL1", "The 1-arc-second data for whole world (NEW!).", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1.003/2000.02.11/"},
+	//{"SRTMGL1N", "The meta-data for this data set.", "https://e4ftl01.cr.usgs.gov/MEASURES/SRTMGL1N.003/2000.02.11/"},
+}
 
 func panicIfErr(err error) {
 	if err != nil {
@@ -20,30 +31,41 @@ func panicIfErr(err error) {
 }
 
 func main() {
-	urls, err := fundURLs(http.DefaultClient, SRTM_BASE_URL, map[string]bool{}, 2)
-	panicIfErr(err)
-
-	var urlKeys []string
-	for k := range urls {
-		urlKeys = append(urlKeys, k)
-	}
-	sort.Strings(urlKeys)
-
 	f, err := os.Create("geoelevations/urls_generated.go")
 	panicIfErr(err)
 	f.WriteString("package geoelevations\n")
-	f.WriteString(`var urls = SrtmData{
+
+	for _, d := range data {
+		fmt.Println("Generating urls from", d.baseUrl, d.description)
+		urls, err := fundURLs(http.DefaultClient, d.baseUrl, map[string]bool{}, 2)
+		panicIfErr(err)
+
+		if len(urls) == 0 {
+			panic("nor urls for " + d.baseUrl)
+		}
+
+		var urlKeys []string
+		for k := range urls {
+			urlKeys = append(urlKeys, k)
+		}
+		sort.Strings(urlKeys)
+
+		f.WriteString("\n")
+		f.WriteString(`var ` + d.name + ` = SrtmData{
 `)
-	f.WriteString(`	BaseUrl: "` + SRTM_BASE_URL + `",`)
-	f.WriteString(`	Files:   map[string]string{
+		f.WriteString(`	BaseURL: "` + d.baseUrl + `",
 `)
-	for _, urlKey := range urlKeys {
-		f.WriteString(`"` + urlKey + `": "` + strings.Replace(strings.ReplaceAll(urls[urlKey], "http:", "https:"), SRTM_BASE_URL, "", 1) + `",
+		f.WriteString(`	Files:   map[string]string{
 `)
-	}
-	f.WriteString(`},
+		for _, urlKey := range urlKeys {
+			f.WriteString(`"` + urlKey + `": "` + strings.Replace(strings.ReplaceAll(urls[urlKey], "http:", "https:"), d.baseUrl, "", 1) + `",
+`)
+		}
+		f.WriteString(`},
 }`)
-	f.Close()
+	}
+
+	panicIfErr(f.Close())
 }
 
 func fundURLs(client *http.Client, url string, visited map[string]bool, depth int) (urls map[string]string, err error) {
@@ -55,7 +77,7 @@ func fundURLs(client *http.Client, url string, visited map[string]bool, depth in
 		//fmt.Println("depth", depth)
 		return
 	}
-	//fmt.Println("Parsing", url)
+	fmt.Println("- parsing", url)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
