@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"math"
-	"net/http"
 	"strings"
 )
 
@@ -18,15 +17,18 @@ const (
 type Srtm struct {
 	cache map[string]*SrtmFile
 
+	client             *httpClient
+	username, password string
+
 	srtmData SrtmData
 	storage  SrtmLocalStorage
 }
 
-func NewSrtm(client *http.Client) (*Srtm, error) {
-	return NewSrtmWithCustomCacheDir(client, "")
+func NewSrtm() (*Srtm, error) {
+	return NewSrtmWithCustomCacheDir("")
 }
 
-func NewSrtmWithCustomStorage(client *http.Client, storage SrtmLocalStorage) (*Srtm, error) {
+func NewSrtmWithCustomStorage(storage SrtmLocalStorage) (*Srtm, error) {
 	return &Srtm{
 		cache:    make(map[string]*SrtmFile),
 		storage:  storage,
@@ -34,17 +36,30 @@ func NewSrtmWithCustomStorage(client *http.Client, storage SrtmLocalStorage) (*S
 	}, nil
 }
 
-func NewSrtmWithCustomCacheDir(client *http.Client, cacheDirectory string) (*Srtm, error) {
+func NewSrtmWithCustomCacheDir(cacheDirectory string) (*Srtm, error) {
 	storage, err := NewLocalFileSrtmStorage(cacheDirectory)
 	if err != nil {
 		return nil, err
 	}
-	return NewSrtmWithCustomStorage(client, storage)
+	return NewSrtmWithCustomStorage(storage)
 }
 
-func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64, username, password string) (float64, error) {
+func (s *Srtm) SetAuth(username, password string) {
+	s.username = username
+	s.password = password
+}
+
+func (self *Srtm) GetElevation(latitude, longitude float64) (float64, error) {
 	srtmFileName, srtmLatitude, srtmLongitude := self.getSrtmFileNameAndCoordinates(latitude, longitude)
 	//log.Printf("srtmFileName for %v,%v: %s", latitude, longitude, srtmFileName)
+
+	if self.client == nil {
+		c, err := newHTTPClient(self.username, self.password)
+		if err != nil {
+			return 0, err
+		}
+		self.client = c
+	}
 
 	_, found := self.cache[srtmFileName]
 	if !found {
@@ -55,7 +70,7 @@ func (self *Srtm) GetElevation(client *http.Client, latitude, longitude float64,
 		self.cache[srtmFileName] = newSrtmFile(srtmFileName, srtmURL, srtmLatitude, srtmLongitude)
 	}
 
-	return self.cache[srtmFileName].getElevation(client, self.storage, latitude, longitude, username, password)
+	return self.cache[srtmFileName].getElevation(self.client, self.storage, latitude, longitude)
 }
 
 func (self *Srtm) getSrtmFileNameAndCoordinates(latitude, longitude float64) (string, float64, float64) {
@@ -103,7 +118,7 @@ func newSrtmFile(name, fileUrl string, latitude, longitude float64) *SrtmFile {
 	return &result
 }
 
-func (self *SrtmFile) loadContents(client *http.Client, username, password string, storage SrtmLocalStorage) error {
+func (self *SrtmFile) loadContents(client *httpClient, storage SrtmLocalStorage) error {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		return nil
 	}
@@ -114,7 +129,7 @@ func (self *SrtmFile) loadContents(client *http.Client, username, password strin
 	if err != nil {
 		if storage.IsNotExists(err) {
 			log.Printf("File %s not retrieved => retrieving: %s", fileName, self.fileUrl)
-			responseBytes, err := downloadSrtmURL(self.fileUrl, username, password)
+			responseBytes, err := client.downloadSrtmURL(self.fileUrl)
 			if err != nil {
 				return err
 			}
@@ -141,7 +156,7 @@ func (self *SrtmFile) loadContents(client *http.Client, username, password strin
 	return nil
 }
 
-func (self *SrtmFile) getElevation(client *http.Client, storage SrtmLocalStorage, latitude, longitude float64, username, password string) (float64, error) {
+func (self *SrtmFile) getElevation(client *httpClient, storage SrtmLocalStorage, latitude, longitude float64) (float64, error) {
 	if !self.isValidSrtmFile || len(self.fileUrl) == 0 {
 		log.Printf("Invalid file %s", self.name)
 		return math.NaN(), nil
@@ -149,7 +164,7 @@ func (self *SrtmFile) getElevation(client *http.Client, storage SrtmLocalStorage
 
 	if len(self.contents) == 0 {
 		log.Println("load contents")
-		err := self.loadContents(client, username, password, storage)
+		err := self.loadContents(client, storage)
 		if err != nil {
 			return math.NaN(), err
 		}

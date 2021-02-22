@@ -3,12 +3,11 @@ package geoelevations
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"testing"
 )
 
 func checkSrtmFileName(t *testing.T, latitude, longitude float64, expectedFileName string, expectedSrtmLatitude, expectedSrtmLongitude float64) {
-	srtm, _ := NewSrtm(http.DefaultClient)
+	srtm, _ := NewSrtm()
 	fileName, srtmLatitude, srtmLongitude := srtm.getSrtmFileNameAndCoordinates(latitude, longitude)
 	log.Printf("Checking %s", fileName)
 	if fileName != expectedFileName {
@@ -44,8 +43,8 @@ const (
 )
 
 func checkElevation(t *testing.T, latitude, longitude, expectedElevation float64) {
-	srtm, _ := NewSrtm(http.DefaultClient)
-	elevation, err := srtm.GetElevation(http.DefaultClient, latitude, longitude, username, password)
+	srtm, _ := NewSrtm()
+	elevation, err := srtm.GetElevation(latitude, longitude)
 	fmt.Printf("Elevation for (%f, %f) is %f\n", latitude, longitude, elevation)
 	if err != nil {
 		t.Errorf("Valid coordinates but error getting elevation:%s", err.Error())

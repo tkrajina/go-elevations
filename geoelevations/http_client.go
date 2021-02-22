@@ -7,38 +7,42 @@ import (
 	"net/http/cookiejar"
 )
 
-func prepareClient() (*http.Client, error) {
+type httpClient struct {
+	http.Client
+	username, password string
+}
+
+func newHTTPClient(username, password string) (*httpClient, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return &http.Client{
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			return http.ErrUseLastResponse
+	return &httpClient{
+		Client: http.Client{
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+			Jar: jar,
 		},
-		Jar: jar,
+		username: username,
+		password: password,
 	}, nil
 }
 
-func downloadSrtmURL(url, username, password string) ([]byte, error) {
-	client, err := prepareClient()
-	if err != nil {
-		return nil, err
-	}
-
+func (c *httpClient) downloadSrtmURL(url string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := client.Do(req)
+	resp, err := c.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
 	if resp.StatusCode == http.StatusOK {
-		return loadResp(resp)
+		return c.loadResp(resp)
 	}
 
 	if resp.StatusCode == 302 {
@@ -50,9 +54,9 @@ func downloadSrtmURL(url, username, password string) ([]byte, error) {
 			return nil, err
 		}
 
-		authReq.SetBasicAuth(username, password)
+		authReq.SetBasicAuth(c.username, c.password)
 
-		authResp, err := client.Do(authReq)
+		authResp, err := c.Do(authReq)
 		if err != nil {
 			return nil, err
 		}
@@ -67,7 +71,7 @@ func downloadSrtmURL(url, username, password string) ([]byte, error) {
 			return nil, err
 		}
 
-		codeResp, err := client.Do(codeReq)
+		codeResp, err := c.Do(codeReq)
 		if err != nil {
 			return nil, err
 		}
@@ -82,15 +86,15 @@ func downloadSrtmURL(url, username, password string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err = client.Do(req)
+	resp, err = c.Do(req)
 	if err != nil {
 		return nil, err
 	}
 
-	return loadResp(resp)
+	return c.loadResp(resp)
 }
 
-func loadResp(resp *http.Response) ([]byte, error) {
+func (c *httpClient) loadResp(resp *http.Response) ([]byte, error) {
 	byts, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
