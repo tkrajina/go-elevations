@@ -13,9 +13,10 @@ import (
 )
 
 const (
-	SRTM_BASE_URL = "http://dds.cr.usgs.gov/srtm"
-	SRTM1_URL     = "/version2_1/SRTM1/"
-	SRTM3_URL     = "/version2_1/SRTM3/"
+	//SRTM_BASE_URL = "http://dds.cr.usgs.gov/srtm"
+	SRTM_BASE_URL = "http://srtm.kurviger.de"
+	SRTM1_URL     = "/SRTM1/"
+	SRTM3_URL     = "/SRTM3/"
 )
 
 type Srtm struct {
@@ -267,23 +268,26 @@ func getLinksFromUrl(client *http.Client, baseUrl, url string, depth int) ([]Srt
 	result := make([]SrtmUrl, 0)
 
 	urls := getLinksFromHtmlDocument(resp.Body)
-	for _, tmpUrl := range urls {
-		urlLowercase := strings.ToLower(tmpUrl)
+	for _, tmpURL := range urls {
+		if strings.HasSuffix(tmpURL, "/index.html") {
+			tmpURL = strings.Replace(tmpURL, "/index.html", "", 1)
+		}
+		urlLowercase := strings.ToLower(tmpURL)
 		if strings.HasSuffix(urlLowercase, ".hgt.zip") {
-			parts := strings.Split(tmpUrl, "/")
+			parts := strings.Split(tmpURL, "/")
 			name := parts[len(parts)-1]
 			name = strings.Replace(name, ".hgt.zip", "", -1)
-			u := strings.Replace(fmt.Sprintf("%s/%s", url, tmpUrl), baseUrl, "", 1)
+			u := strings.Replace(fmt.Sprintf("%s/%s", url, tmpURL), baseUrl, "", 1)
 			srtmUrl := SrtmUrl{Name: name, Url: u}
 			result = append(result, srtmUrl)
-			log.Printf("> %s/%s -> %s\n", url, tmpUrl, tmpUrl)
+			log.Printf("> %s/%s -> %s\n", url, tmpURL, tmpURL)
 		} else if len(urlLowercase) > 0 && urlLowercase[0] != '/' && !strings.HasPrefix(urlLowercase, "http") && !strings.HasSuffix(urlLowercase, ".jpg") {
-			newLinks, err := getLinksFromUrl(client, baseUrl, fmt.Sprintf("%s/%s", url, tmpUrl), depth+1)
+			newLinks, err := getLinksFromUrl(client, baseUrl, fmt.Sprintf("%s/%s", url, tmpURL), depth+1)
 			if err != nil {
 				return nil, err
 			}
 			result = append(result, newLinks...)
-			log.Printf("> %s\n", tmpUrl)
+			log.Printf("> %s\n", tmpURL)
 		}
 	}
 
