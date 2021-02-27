@@ -23,7 +23,7 @@ type SrtmData struct {
 }
 
 func newSrtmData(client *http.Client, storage SrtmLocalStorage) (*SrtmData, error) {
-	fn := "urls.json"
+	fn := "srtm.json"
 
 	bytes, err := storage.LoadFile(fn)
 	if err != nil {
