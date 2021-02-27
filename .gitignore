@@ -3,3 +3,4 @@ tmp*
 tags
 *.hgt
 *.hgt.zip
+vendor/*
